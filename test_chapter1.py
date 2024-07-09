@@ -48,7 +48,3 @@ def test_request():
     assert response.explanation == "OK\r\n"
     assert response.headers["content-type"] == "text/html"
     assert response.content == "<html></html>"
-
-
-if __name__ == "__main__":
-    test_request()
