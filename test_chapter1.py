@@ -1,4 +1,4 @@
-from chapter1 import URL
+from chapter1 import URL, Scheme, show
 
 from http.server import SimpleHTTPRequestHandler
 import os
@@ -21,6 +21,11 @@ def test_server():
     httpd_thread.start()
     yield httpd
     httpd.shutdown()
+
+
+def test_nonexistent_scheme():
+    with pytest.raises(KeyError):
+        URL("foo://bar/quux")
 
 
 def test_url_of_exampleorg():
@@ -49,14 +54,24 @@ def test_url_with_path():
 
 def test_url_with_https():
     url = URL("https://example.org")
-    assert url.scheme == "https"
+    assert url.scheme == Scheme.HTTPS
     assert url.port == 443
 
 
 def test_url_with_file():
     url = URL(f"file://{os.getcwd()}/data/index.html")
-    assert url.scheme == "file"
+    assert url.scheme == Scheme.FILE
     assert url.path == f"{os.getcwd()}/data/index.html"
+
+
+def test_url_with_data():
+    url = URL(f"data:text/html,Hello world!")
+    assert url.scheme == Scheme.DATA
+
+
+def test_url_with_data_nocomma():
+    with pytest.raises(AssertionError):
+        URL(f"data:text/htmlHello world!")
 
 
 def test_request_response(test_server):
@@ -77,6 +92,7 @@ def test_request(test_server):
 
     content = url.request()
     assert content == "<html>hi</html>"
+    assert show(content) == "hi"
 
 
 def test_request_headers():
@@ -92,3 +108,26 @@ def test_file_scheme():
     url = URL(raw_url)
     content = url.request()
     assert content == "<html>hi</html>"
+
+
+def test_data_scheme():
+    raw_url = "data:text/html,Hello world!"
+    url = URL(raw_url)
+    content = url.request()
+    assert content == "Hello world!"
+
+
+def test_data_entities():
+    raw_url = "data:text/html,&lt;div&gt;"
+    url = URL(raw_url)
+    content = show(url.request())
+    assert content == "<div>"
+
+
+def test_view_source_scheme(test_server):
+    raw_url = "view-source:http://localhost:8888/data/index.html"
+    url = URL(raw_url)
+
+    content = url.request()
+    assert content == "<html>hi</html>"
+    assert show(content, is_viewsource=url.is_viewsource) == "<html>hi</html>"

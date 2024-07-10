@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Mapping, IO
 from dataclasses import dataclass, field
 import os
@@ -15,37 +16,47 @@ class Response:
     content: str = ""
 
 
-class URL:
+Scheme = Enum("Scheme", ["HTTP", "HTTPS", "FILE", "DATA"])
+DEFAULT_PORTS = {Scheme.HTTP: 80, Scheme.HTTPS: 443}
+
+
+class URL(object):
     def __init__(self, url: str):
-        self.scheme, url = url.split("://", 1)
-        assert self.scheme in ["http", "https", "file"]
+        if url.startswith("view-source:"):
+            self.is_viewsource = True
+            url = url.removeprefix("view-source:")
+
+        scheme, url = url.split(":", 1)
+        self.scheme = Scheme[scheme.upper()]
+        url = url.lstrip("/")
+        # XXX ewww
+        if self.scheme in (Scheme.FILE, Scheme.DATA):
+            url = f"/{url}"
+        if self.scheme == Scheme.DATA:
+            assert "," in url
+
         hostAndPort, url = url.split("/", 1) if "/" in url else (url, "")
-        default_port = {"http": "80", "https": "443", "file": ""}
-        self.host, port = (
-            hostAndPort.split(":")
-            if ":" in hostAndPort
-            else (hostAndPort, default_port[self.scheme])
-        )
+        self.host, *port = hostAndPort.split(":", 1)
         if port:
-            self.port = int(port)
+            self.port = int(port[0])
         else:
-            # XXX: is this right?
-            self.port = ""
+            self.port = DEFAULT_PORTS.get(self.scheme, None)
+
         self.path = "/" + url
 
     def request_response(self) -> Response:
         # XXX: some error handling
-        response = Response()
         match self.scheme:
-            case "file":
+            case Scheme.FILE:
                 with open(self.path) as f:
                     response = Response(content="\n".join(f.readlines()))
-            case "http":
+            case Scheme.HTTP | Scheme.HTTPS:
                 raw_response = self.fetch_http()
                 response = self._parse_response(raw_response)
-            case "https":
-                raw_response = self.fetch_http()
-                response = self._parse_response(raw_response)
+            case Scheme.DATA:
+                response = Response(content=self.path.split(",", 1)[1])
+            case _:
+                response = Response()
 
         return response
 
@@ -53,7 +64,7 @@ class URL:
         s = socket.socket(
             family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
         )
-        if self.scheme == "https":
+        if self.scheme == Scheme.HTTPS:
             ctx = ssl.create_default_context()
             s = ctx.wrap_socket(s, server_hostname=self.host)
         s.connect((self.host, self.port))
@@ -111,18 +122,37 @@ class URL:
 
 def load(url: URL):
     body = url.request()
-    show(body)
+    show(body, url.is_viewsource)
 
 
-def show(body: str):
+def show(body: str, is_viewsource=False) -> str:
+    if is_viewsource:
+        return body
+
+    result = ""
     in_tag = False
-    for c in body:
+    consume = 0
+
+    for i, c in enumerate(body):
+        if consume:
+            consume -= 1
+            continue
+
         if c == "<":
             in_tag = True
         elif c == ">":
             in_tag = False
+        elif c == "&" and body[i : i + 4] == "&lt;":
+            result += "<"
+            consume += 3
+        elif c == "&" and body[i : i + 4] == "&gt;":
+            result += ">"
+            consume += 3
         elif not in_tag:
-            print(c, end="")
+            result += c
+
+    print(result)
+    return result
 
 
 if __name__ == "__main__":
