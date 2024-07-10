@@ -1,6 +1,7 @@
 from typing import Mapping, IO
 from dataclasses import dataclass, field
 import socket
+import ssl
 
 
 @dataclass
@@ -16,22 +17,36 @@ class Response:
 class URL:
     def __init__(self, url: str):
         self.scheme, url = url.split("://", 1)
-        assert self.scheme == "http"
+        assert self.scheme in ["http", "https"]
         hostAndPort, url = url.split("/", 1) if "/" in url else (url, "")
-        self.host, port = hostAndPort.split(":") if ":" in hostAndPort else (hostAndPort, "80")
+        default_port = {"http": "80", "https": "443"}
+        self.host, port = (
+            hostAndPort.split(":")
+            if ":" in hostAndPort
+            else (hostAndPort, default_port[self.scheme])
+        )
         self.port = int(port)
         self.path = "/" + url
 
-    def request(self):
+    def request_response(self) -> Response:
         s = socket.socket(
             family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
         )
+        if self.scheme == "https":
+            ctx = ssl.create_default_context()
+            s = ctx.wrap_socket(s, server_hostname=self.host)
         s.connect((self.host, self.port))
 
         request = self._build_request()
         s.send(request.encode("utf8"))
         raw_response = s.makefile("r", encoding="utf8", newline="\r\n")
-        return self._parse_response(raw_response)
+        response = self._parse_response(raw_response)
+        s.close()
+        return response
+
+    def request(self) -> str:
+        response = self.request_response()
+        return response.content
 
     def _build_request(self):
         request = f"GET {self.path} HTTP/1.0\r\n"
@@ -70,3 +85,25 @@ class URL:
 
     def _parse_content(self, raw: IO[str], response: Response):
         response.content = raw.read()
+
+
+def load(url: URL):
+    body = url.request()
+    show(body)
+
+
+def show(body: str):
+    in_tag = False
+    for c in body:
+        if c == "<":
+            in_tag = True
+        elif c == ">":
+            in_tag = False
+        elif not in_tag:
+            print(c, end="")
+
+
+if __name__ == "__main__":
+    import sys
+
+    load(URL(sys.argv[1]))
