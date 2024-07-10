@@ -1,5 +1,6 @@
 from typing import Mapping, IO
 from dataclasses import dataclass, field
+import os
 import socket
 import ssl
 
@@ -17,18 +18,38 @@ class Response:
 class URL:
     def __init__(self, url: str):
         self.scheme, url = url.split("://", 1)
-        assert self.scheme in ["http", "https"]
+        assert self.scheme in ["http", "https", "file"]
         hostAndPort, url = url.split("/", 1) if "/" in url else (url, "")
-        default_port = {"http": "80", "https": "443"}
+        default_port = {"http": "80", "https": "443", "file": ""}
         self.host, port = (
             hostAndPort.split(":")
             if ":" in hostAndPort
             else (hostAndPort, default_port[self.scheme])
         )
-        self.port = int(port)
+        if port:
+            self.port = int(port)
+        else:
+            # XXX: is this right?
+            self.port = ""
         self.path = "/" + url
 
     def request_response(self) -> Response:
+        # XXX: some error handling
+        response = Response()
+        match self.scheme:
+            case "file":
+                with open(self.path) as f:
+                    response = Response(content="\n".join(f.readlines()))
+            case "http":
+                raw_response = self.fetch_http()
+                response = self._parse_response(raw_response)
+            case "https":
+                raw_response = self.fetch_http()
+                response = self._parse_response(raw_response)
+
+        return response
+
+    def fetch_http(self):
         s = socket.socket(
             family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
         )
@@ -40,9 +61,8 @@ class URL:
         request = self._build_request()
         s.send(request.encode("utf8"))
         raw_response = s.makefile("r", encoding="utf8", newline="\r\n")
-        response = self._parse_response(raw_response)
         s.close()
-        return response
+        return raw_response
 
     def request(self) -> str:
         response = self.request_response()
@@ -51,6 +71,8 @@ class URL:
     def _build_request(self):
         request = f"GET {self.path} HTTP/1.0\r\n"
         request += f"Host: {self.host}\r\n"
+        request += "Connection: close\r\n"
+        request += "User-Agent: Giraffe\r\n"
         request += "\r\n"
         return request
 
@@ -106,4 +128,9 @@ def show(body: str):
 if __name__ == "__main__":
     import sys
 
-    load(URL(sys.argv[1]))
+    if len(sys.argv) >= 2:
+        url = sys.argv[1]
+    else:
+        # XXX: changeme to better default
+        url = f"file://{os.getcwd()}/data/index.html"
+    load(URL(url))

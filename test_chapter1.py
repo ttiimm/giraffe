@@ -1,6 +1,7 @@
 from chapter1 import URL
 
 from http.server import SimpleHTTPRequestHandler
+import os
 import pytest
 import socketserver
 import threading
@@ -52,7 +53,13 @@ def test_url_with_https():
     assert url.port == 443
 
 
-def test_request(test_server):
+def test_url_with_file():
+    url = URL(f"file://{os.getcwd()}/data/index.html")
+    assert url.scheme == "file"
+    assert url.path == f"{os.getcwd()}/data/index.html"
+
+
+def test_request_response(test_server):
     raw_url = "http://localhost:8888/data/index.html"
     url = URL(raw_url)
 
@@ -61,12 +68,27 @@ def test_request(test_server):
     assert response.status == "200"
     assert response.explanation == "OK\r\n"
     assert response.headers["content-type"] == "text/html"
-    assert response.content == "<html></html>"
+    assert response.content == "<html>hi</html>"
 
 
-def test_request_content():
+def test_request(test_server):
     raw_url = "http://localhost:8888/data/index.html"
     url = URL(raw_url)
 
     content = url.request()
-    assert content == "<html></html>"
+    assert content == "<html>hi</html>"
+
+
+def test_request_headers():
+    raw_url = "https://httpbin.org/headers"
+    url = URL(raw_url)
+    response = url.request()
+    assert '"Host": "httpbin.org' in response
+    assert '"User-Agent": "Giraffe"' in response
+
+
+def test_file_scheme():
+    raw_url = f"file:///{os.getcwd()}/data/index.html"
+    url = URL(raw_url)
+    content = url.request()
+    assert content == "<html>hi</html>"
