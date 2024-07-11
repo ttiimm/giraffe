@@ -7,9 +7,9 @@ import socketserver
 import threading
 
 
+# TODO: record request for verification?
 class TestServer(socketserver.TCPServer):
     allow_reuse_address = True
-
     __test__ = False  # pytest should ignore this
 
 
@@ -84,6 +84,7 @@ def test_request_response(test_server):
     assert response.explanation == "OK\r\n"
     assert response.headers["content-type"] == "text/html"
     assert response.content == "<html>hi</html>"
+    assert url.num_sockets() == 1
 
 
 def test_request(test_server):
@@ -93,7 +94,6 @@ def test_request(test_server):
     content = url.request()
     assert content == "<html>hi</html>"
     assert show(content) == "hi"
-
 
 def test_request_headers():
     raw_url = "https://httpbin.org/headers"

@@ -43,6 +43,10 @@ class URL(object):
             self.port = DEFAULT_PORTS.get(self.scheme, None)
 
         self.path = "/" + url
+        self.sockets = {}
+    
+    def num_sockets(self) -> int:
+        return len(self.sockets)
 
     def request_response(self) -> Response:
         # XXX: some error handling
@@ -61,18 +65,22 @@ class URL(object):
         return response
 
     def fetch_http(self):
-        s = socket.socket(
-            family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
-        )
-        if self.scheme == Scheme.HTTPS:
-            ctx = ssl.create_default_context()
-            s = ctx.wrap_socket(s, server_hostname=self.host)
-        s.connect((self.host, self.port))
+        host_port = (self.host, self.port)
+        s = self.sockets.get(host_port, None)
+        if not s:
+            s = socket.socket(
+                family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
+            )
+            if self.scheme == Scheme.HTTPS:
+                ctx = ssl.create_default_context()
+                s = ctx.wrap_socket(s, server_hostname=self.host)
+            s.connect(host_port)
+            self.sockets[host_port] = s
 
         request = self._build_request()
         s.send(request.encode("utf8"))
         raw_response = s.makefile("r", encoding="utf8", newline="\r\n")
-        s.close()
+
         return raw_response
 
     def request(self) -> str:
@@ -80,9 +88,8 @@ class URL(object):
         return response.content
 
     def _build_request(self):
-        request = f"GET {self.path} HTTP/1.0\r\n"
+        request = f"GET {self.path} HTTP/1.1\r\n"
         request += f"Host: {self.host}\r\n"
-        request += "Connection: close\r\n"
         request += "User-Agent: Giraffe\r\n"
         request += "\r\n"
         return request
@@ -114,10 +121,24 @@ class URL(object):
 
         assert "transfer-encoding" not in response_headers
         assert "content-encoding" not in response_headers
+        assert "content-length" in response_headers
         response.headers = response_headers
 
     def _parse_content(self, raw: IO[str], response: Response):
-        response.content = raw.read()
+        # XXX: the Content-Length is in bytes, but the encoding is UTF-8... probably not doing
+        # the right thing here
+        body_recv = 0
+        content_len = int(response.headers["content-length"])
+        is_done = False
+        # TODO: find a test case to make sure this looping works
+        while not is_done:
+            pre_recv = body_recv
+            response.content = raw.read(content_len)
+            body_recv = len(response.content)
+            # if content_len equals length of body_recv, assume done
+            is_done = content_len == body_recv
+            # if the length of body_recv doesn't change, assume done
+            is_done = is_done or body_recv != pre_recv
 
 
 def load(url: URL):
@@ -125,7 +146,7 @@ def load(url: URL):
     show(body, url.is_viewsource)
 
 
-def show(body: str, is_viewsource=False) -> str:
+def show(body: str, is_viewsource=False, is_printing=True) -> str:
     if is_viewsource:
         return body
 
