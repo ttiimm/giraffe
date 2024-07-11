@@ -5,6 +5,7 @@ import os
 import pytest
 import socketserver
 import threading
+import time
 
 
 # TODO: record request for verification?
@@ -83,7 +84,7 @@ def test_request_response(test_server):
     assert response.status == "200"
     assert response.explanation == "OK\r\n"
     assert response.headers["content-type"] == "text/html"
-    assert response.content == "<html>hi</html>"
+    assert response.body == "<html>hi</html>"
     assert url.num_sockets() == 1
 
 
@@ -95,12 +96,42 @@ def test_request(test_server):
     assert content == "<html>hi</html>"
     assert show(content) == "hi"
 
+
 def test_request_headers():
     raw_url = "https://httpbin.org/headers"
     url = URL(raw_url)
     response = url.request()
     assert '"Host": "httpbin.org' in response
     assert '"User-Agent": "Giraffe"' in response
+
+
+def test_request_browserengineering():
+    raw_url = "http://browser.engineering/http.html"
+    url = URL(raw_url)
+    response = url.request_response()
+    assert "200" == response.status
+    assert "</html>" in response.body
+
+
+def test_request_redirect():
+    raw_url = "http://browser.engineering/redirect"
+    url = URL(raw_url)
+    response = url.request_response()
+    assert "200" == response.status
+
+
+def test_request_redirect2():
+    raw_url = "http://browser.engineering/redirect2"
+    url = URL(raw_url)
+    response = url.request_response()
+    assert "200" == response.status
+
+
+def test_request_redirect3():
+    raw_url = "http://browser.engineering/redirect3"
+    url = URL(raw_url)
+    response = url.request_response()
+    assert "200" == response.status
 
 
 def test_file_scheme():
@@ -131,3 +162,17 @@ def test_view_source_scheme(test_server):
     content = url.request()
     assert content == "<html>hi</html>"
     assert show(content, is_viewsource=url.is_viewsource) == "<html>hi</html>"
+
+
+def test_caching():
+    url = URL("http://example.org/index.html")
+    first = url.request_response()
+    second = url.request_response()
+    assert first is second
+
+def test_caching_expires():
+    url = URL("https://httpbin.org/cache/1")
+    first = url.request_response()
+    time.sleep(1)
+    second = url.request_response()
+    assert first is not second
