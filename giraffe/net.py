@@ -14,6 +14,7 @@ This code is based on Chapter 1 of
 [Web Browser Engineering](https://browser.engineering/http.html).
 """
 
+
 @dataclass
 class Response:
     version: str = ""
@@ -233,49 +234,3 @@ def _handle_http(url: URL) -> Response:
                 url.cache[url] = (time.time() + max_age, response)
 
     return response
-
-
-def load(url: URL):
-    body = url.request()
-    show(body, url.is_viewsource)
-
-
-def show(body: str, is_viewsource=False, is_printing=True) -> str:
-    if is_viewsource:
-        return body
-
-    result = ""
-    in_tag = False
-    consume = 0
-
-    for i, c in enumerate(body):
-        if consume:
-            consume -= 1
-            continue
-
-        if c == "<":
-            in_tag = True
-        elif c == ">":
-            in_tag = False
-        elif c == "&" and body[i : i + 4] == "&lt;":
-            result += "<"
-            consume += 3
-        elif c == "&" and body[i : i + 4] == "&gt;":
-            result += ">"
-            consume += 3
-        elif not in_tag:
-            result += c
-
-    print(result)
-    return result
-
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) >= 2:
-        url = sys.argv[1]
-    else:
-        # XXX: changeme to better default
-        url = f"file://{os.getcwd()}/data/index.html"
-    load(URL(url))
