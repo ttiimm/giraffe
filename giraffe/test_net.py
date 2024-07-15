@@ -1,4 +1,4 @@
-from chapter1 import URL, Scheme, show
+from giraffe.net import URL, Scheme, show
 
 from http.server import SimpleHTTPRequestHandler
 import os

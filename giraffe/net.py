@@ -8,6 +8,11 @@ import socket
 import ssl
 import time
 
+"""An implementation of network code for fetching web pages.
+
+This code is based on Chapter 1 of 
+[Web Browser Engineering](https://browser.engineering/http.html).
+"""
 
 @dataclass
 class Response:
