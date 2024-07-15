@@ -1,4 +1,4 @@
-from giraffe.browser import Browser
+from giraffe.browser import lex
 from giraffe.net import URL, Scheme
 
 from http.server import SimpleHTTPRequestHandler
@@ -95,7 +95,7 @@ def test_request(test_server):
 
     content = url.request()
     assert content == "<html>hi</html>"
-    assert Browser().show(content) == "hi"
+    assert lex(content) == "hi"
 
 
 def test_request_headers():
@@ -152,7 +152,7 @@ def test_data_scheme():
 def test_data_entities():
     raw_url = "data:text/html,&lt;div&gt;"
     url = URL(raw_url)
-    content = Browser().show(url.request())
+    content = lex(url.request())
     assert content == "<div>"
 
 
@@ -162,7 +162,7 @@ def test_view_source_scheme(test_server):
 
     content = url.request()
     assert content == "<html>hi</html>"
-    assert Browser().show(content, is_viewsource=url.is_viewsource) == "<html>hi</html>"
+    assert lex(content, is_viewsource=url.is_viewsource) == "<html>hi</html>"
 
 
 def test_caching():
