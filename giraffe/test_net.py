@@ -8,8 +8,15 @@ import socketserver
 import threading
 import time
 
+"""Test cases for the browser's net code.
+
+These test help verify the content and exercises for Chapter 1 of
+[Web Browser Engineering](https://browser.engineering/http.html).
+"""
+
 
 # TODO: record request for verification?
+# XXX: avoid copy pasta
 class TestServer(socketserver.TCPServer):
     allow_reuse_address = True
     __test__ = False  # pytest should ignore this
@@ -67,13 +74,13 @@ def test_url_with_file():
 
 
 def test_url_with_data():
-    url = URL(f"data:text/html,Hello world!")
+    url = URL("data:text/html,Hello world!")
     assert url.scheme == Scheme.DATA
 
 
 def test_url_with_data_nocomma():
     with pytest.raises(AssertionError):
-        URL(f"data:text/htmlHello world!")
+        URL("data:text/htmlHello world!")
 
 
 def test_request_response(test_server):

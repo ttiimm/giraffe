@@ -3,7 +3,6 @@ import gzip
 from io import BytesIO
 from typing import Mapping, IO
 from dataclasses import dataclass, field
-import os
 import socket
 import ssl
 import time
@@ -22,10 +21,10 @@ class Response:
     explanation: str = ""
     # XXX: can this be a [str, List[str]]
     headers: Mapping[str, str] = field(default_factory=dict)
-    body: str = ""
+    body: str = "<html><head></head><body></body></html>"
 
 
-Scheme = Enum("Scheme", ["HTTP", "HTTPS", "FILE", "DATA"])
+Scheme = Enum("Scheme", ["HTTP", "HTTPS", "FILE", "DATA", "ABOUT"])
 DEFAULT_PORTS = {Scheme.HTTP: 80, Scheme.HTTPS: 443}
 
 MAX_CHUNK = 16 * 1024
@@ -196,6 +195,7 @@ class URL(object):
         )
 
 
+# XXX Move this into browser?
 def _handle_http(url: URL) -> Response:
     response = Response()
     needs_request = True

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import math
+import sys
 import tkinter
 from tkinter import BOTH
 from typing import List
@@ -9,7 +10,7 @@ from giraffe.net import URL
 """An implementation of browser gui code for displaying web pages.
 
 This code is based on Chapter 2 of 
-[Web Browser Engineering](https://browser.engineering/http.html).
+[Web Browser Engineering](https://browser.engineering/graphics.html).
 """
 
 DO_EXPAND = 1
@@ -43,13 +44,22 @@ class Browser(object):
         self.scroll = 0
         self.display_list = []
         self.text = ""
+        self.location = ""
         self.window.bind(sequence="<Down>", func=self.scrolldown)
         self.window.bind(sequence="<Up>", func=self.scrollup)
         self.window.bind(sequence="<MouseWheel>", func=self.scrolldelta)
         self.window.bind(sequence="<Configure>", func=self.configure)
 
-    def load(self, url: URL):
+    def load(self, to_load: str):
+        try:
+            url = URL(to_load)
+        except Exception as e:
+            msg = getattr(e, "message", repr(e))
+            print(f"error: {msg}", file=sys.stderr)
+            url = URL("about:blank")
+
         body = url.request()
+        self.location = url
         self.text = lex(body, url.is_viewsource)
         # display_list is standard browser/gui (?) terminology
         self.display_list = layout(self.text, self.width)
@@ -70,6 +80,9 @@ class Browser(object):
             self.canvas.create_text(x, y - self.scroll, text=c)
 
     def _display_scrollbar(self):
+        if not self.display_list:
+            return
+
         first_y = self.display_list[0].cursor_y
         last_y = self.display_list[-1].cursor_y
         if first_y < self.scroll or last_y > self.scroll + self.height:
@@ -80,7 +93,9 @@ class Browser(object):
             y1 = scroll_perc * self.height + SCROLLBAR_PAD
             x2 = self.width - SCROLLBAR_PAD
             y2 = scroll_perc * self.height + scrollbar_len - SCROLLBAR_PAD
-            self.canvas.create_rectangle(x1, y1, x2, y2, fill=SCROLLBAR_COLOR, stipple='gray25')
+            self.canvas.create_rectangle(
+                x1, y1, x2, y2, fill=SCROLLBAR_COLOR, stipple="gray25"
+            )
 
     def configure(self, e):
         needs_draw = False
