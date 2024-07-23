@@ -209,6 +209,7 @@ def _handle_http(url: URL) -> Response:
         raw = url._fetch_http()
         response = url._parse_response(raw)
         # XXX: assumes has a location header
+        # TODO: handle max redirects
         if response.status == "301":
             location = response.headers["location"]
             if not location.startswith("http"):
