@@ -88,18 +88,12 @@ class Browser(object):
             self.canvas.create_rectangle(x1, y1, x2, y2, fill=SCROLLBAR_COLOR)
 
     def configure(self, e):
-        needs_draw = False
-        if self.width != e.width:
-            self.width = e.width
-            self.display_list = Layout(
-                self.tokens, self.width - SCROLLBAR_WIDTH
-            ).display_list
-            needs_draw = True
-        if self.height != e.height:
-            self.height = e.height
-
-        if needs_draw:
-            self.draw()
+        self.width = e.width
+        self.height = e.height
+        self.display_list = Layout(
+            self.tokens, self.width - SCROLLBAR_WIDTH
+        ).display_list
+        self.draw()
 
     def scrolldown(self, _e):
         self._handle_scroll(SCROLL_STEP)

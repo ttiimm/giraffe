@@ -2,6 +2,12 @@ import tkinter.font
 from dataclasses import dataclass
 from typing import List, Sequence
 
+"""The lexing and layout code used by the browser.
+
+This code is based on Chapter 3 of 
+[Web Browser Engineering](https://browser.engineering/text.html).
+"""
+
 
 @dataclass
 class Text:
