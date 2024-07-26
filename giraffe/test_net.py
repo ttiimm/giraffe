@@ -184,3 +184,16 @@ def test_caching_expires():
     time.sleep(1)
     second = url.request_response()
     assert first is not second
+
+
+def test_request_aboutblank():
+    raw_url = "about:blank"
+    url = URL(raw_url)
+
+    content = url.request()
+    assert content == "<html><head></head><body></body></html>"
+
+
+def test_url_with_aboutblank():
+    url = URL("about:blank")
+    assert url.scheme == Scheme.ABOUT

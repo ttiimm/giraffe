@@ -4,7 +4,7 @@ import tkinter
 import tkinter.font
 from tkinter import BOTH
 
-from giraffe.layout import Layout, lex, lineheight
+from giraffe.layout import VSTEP, Layout, lex, lineheight
 from giraffe.net import URL
 
 """An implementation of browser gui code for displaying web pages.
@@ -106,7 +106,9 @@ class Browser(object):
         self._handle_scroll(delta)
 
     def _handle_scroll(self, delta):
-        maxline = self.display_list[-1].cursor_y - self.height
+        lastline = self.display_list[-1]
+        vstep = lineheight(lastline.font)
+        maxline = lastline.cursor_y - self.height + vstep + VSTEP
         # clamp scroll such that scroll doesn't go beyond the body
         self.scroll = max(0, min(self.scroll + delta, maxline))
         self.draw()

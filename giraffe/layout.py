@@ -150,9 +150,7 @@ def get_font(size, is_bold, is_italic):
     slant = SLANT_ITALIC if is_italic else SLANT_ROMAN
     key = (size, weight, slant)
     if key not in FONTS:
-        font = tkinter.font.Font(
-            family="Iosevka", size=size, weight=weight, slant=slant
-        )
+        font = tkinter.font.Font(size=size, weight=weight, slant=slant)
         label = tkinter.Label(font=font)
         FONTS[key] = (font, label)
     return FONTS[key][0]

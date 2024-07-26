@@ -6,7 +6,7 @@ import pytest
 
 from giraffe.browser import Browser
 from giraffe.layout import Tag
-from giraffe.net import URL, Scheme
+from giraffe.net import URL
 
 """Test cases for the browser's net code.
 
@@ -32,19 +32,6 @@ def _test_server():
     httpd.shutdown()
 
 
-def test_url_with_data():
-    url = URL("about:blank")
-    assert url.scheme == Scheme.ABOUT
-
-
-def test_request_aboutblank():
-    raw_url = "about:blank"
-    url = URL(raw_url)
-
-    content = url.request()
-    assert content == "<html><head></head><body></body></html>"
-
-
 def test_with_malformed_url():
     browser = Browser()
     browser.load("foo:bar:quux")
@@ -58,3 +45,11 @@ def test_with_malformed_url():
         Tag("/body"),
         Tag("/html"),
     ]
+
+
+def test_load(_test_server):
+    browser = Browser()
+    browser.load("http://0.0.0.0:8889/data/index.html")
+    assert browser.location == URL("http://0.0.0.0:8889/data/index.html")
+    assert browser.display_list
+    assert browser.tokens
