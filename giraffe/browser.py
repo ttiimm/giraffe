@@ -1,10 +1,10 @@
-from dataclasses import dataclass
 import math
 import sys
 import tkinter
+import tkinter.font
 from tkinter import BOTH
-from typing import List
 
+from giraffe.layout import Layout, lex, lineheight
 from giraffe.net import URL
 
 """An implementation of browser gui code for displaying web pages.
@@ -15,19 +15,11 @@ This code is based on Chapter 2 of
 
 DO_EXPAND = 1
 WIDTH, HEIGHT = 800, 600
-HSTEP, VSTEP = 13, 18
 SCROLL_STEP = 100
 SCROLL_MULTIPLIER = -20
 SCROLLBAR_WIDTH = 12
 SCROLLBAR_PAD = 4
 SCROLLBAR_COLOR = "cornflower blue"
-
-
-@dataclass
-class DisplayUnit:
-    cursor_x: int
-    cursor_y: int
-    c: str
 
 
 class FakeEvent:
@@ -43,7 +35,7 @@ class Browser(object):
         self.canvas.pack(fill=BOTH, expand=DO_EXPAND)
         self.scroll = 0
         self.display_list = []
-        self.text = ""
+        self.tokens = []
         self.location = ""
         self.window.bind(sequence="<Down>", func=self.scrolldown)
         self.window.bind(sequence="<Up>", func=self.scrollup)
@@ -60,9 +52,9 @@ class Browser(object):
 
         body = url.request()
         self.location = url
-        self.text = lex(body, url.is_viewsource)
+        self.tokens = lex(body, url.is_viewsource)
         # display_list is standard browser/gui (?) terminology
-        self.display_list = layout(self.text, self.width)
+        self.display_list = Layout(self.tokens, self.width).display_list
         self.draw()
 
     def draw(self):
@@ -72,12 +64,12 @@ class Browser(object):
 
     def _display_text(self):
         for du in self.display_list:
-            x, y, c = (du.cursor_x, du.cursor_y, du.c)
-            if y + VSTEP < self.scroll:
+            x, y, c, font = (du.cursor_x, du.cursor_y, du.word, du.font)
+            if y + lineheight(font) < self.scroll:
                 continue
             if y > self.scroll + self.height:
                 continue
-            self.canvas.create_text(x, y - self.scroll, text=c)
+            self.canvas.create_text(x, y - self.scroll, text=c, font=font, anchor="nw")
 
     def _display_scrollbar(self):
         if not self.display_list:
@@ -93,15 +85,15 @@ class Browser(object):
             y1 = scroll_perc * self.height + SCROLLBAR_PAD
             x2 = self.width - SCROLLBAR_PAD
             y2 = scroll_perc * self.height + scrollbar_len - SCROLLBAR_PAD
-            self.canvas.create_rectangle(
-                x1, y1, x2, y2, fill=SCROLLBAR_COLOR, stipple="gray25"
-            )
+            self.canvas.create_rectangle(x1, y1, x2, y2, fill=SCROLLBAR_COLOR)
 
     def configure(self, e):
         needs_draw = False
         if self.width != e.width:
             self.width = e.width
-            self.display_list = layout(self.text, self.width - SCROLLBAR_WIDTH)
+            self.display_list = Layout(
+                self.tokens, self.width - SCROLLBAR_WIDTH
+            ).display_list
             needs_draw = True
         if self.height != e.height:
             self.height = e.height
@@ -124,54 +116,3 @@ class Browser(object):
         # clamp scroll such that scroll doesn't go beyond the body
         self.scroll = max(0, min(self.scroll + delta, maxline))
         self.draw()
-
-
-def lex(body: str, is_viewsource=False) -> str:
-    if is_viewsource:
-        return body
-
-    result = ""
-    in_tag = False
-    consume = 0
-
-    for i, c in enumerate(body):
-        if consume:
-            consume -= 1
-            continue
-
-        if c == "<":
-            in_tag = True
-        elif c == ">":
-            in_tag = False
-        elif c == "&" and body[i : i + 4] == "&lt;":
-            result += "<"
-            consume += 3
-        elif c == "&" and body[i : i + 4] == "&gt;":
-            result += ">"
-            consume += 3
-        elif not in_tag:
-            result += c
-
-    return result
-
-
-def layout(text, width) -> List[DisplayUnit]:
-    display_list = []
-    cursor_x, cursor_y = HSTEP, VSTEP
-    prev_c = ""
-    for c in text:
-        if c == "\n":
-            # XXX: skip over repeating new lines characters
-            if prev_c == "\n":
-                continue
-            cursor_y += VSTEP * 2
-            cursor_x = HSTEP
-        else:
-            display_list.append(DisplayUnit(cursor_x, cursor_y, c))
-            cursor_x += HSTEP
-            if cursor_x >= width - HSTEP:
-                cursor_y += VSTEP
-                cursor_x = HSTEP
-
-        prev_c = c
-    return display_list

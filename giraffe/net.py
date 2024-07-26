@@ -1,11 +1,11 @@
-from enum import Enum
 import gzip
-from io import BytesIO
-from typing import Mapping, IO
-from dataclasses import dataclass, field
 import socket
 import ssl
 import time
+from dataclasses import dataclass, field
+from enum import Enum
+from io import BytesIO
+from typing import IO, Mapping
 
 """An implementation of network code for fetching web pages.
 

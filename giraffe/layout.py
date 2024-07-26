@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import tkinter.font
+from dataclasses import dataclass
 from typing import List, Sequence
 
 
@@ -74,6 +74,7 @@ class Layout(object):
         self.is_bold = False
         self.is_italic = False
         self.width = width
+        self.size = 12
 
         for tok in tokens:
             self.token(tok)
@@ -90,11 +91,19 @@ class Layout(object):
             self.is_bold = True
         elif tok.tag == "/b":
             self.is_bold = False
+        elif tok.tag == "small":
+            self.size -= 2
+        elif tok.tag == "/small":
+            self.size += 2
+        elif tok.tag == "big":
+            self.size += 2
+        elif tok.tag == "/big":
+            self.size -= 2
 
     def word(self, word):
         font = tkinter.font.Font(
             family="Iosevka",
-            size=16,
+            size=self.size,
             weight=WEIGHT_BOLD if self.is_bold else WEIGHT_NORMAL,
             slant=SLANT_ITALIC if self.is_italic else SLANT_ROMAN,
         )

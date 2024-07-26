@@ -1,12 +1,12 @@
-from giraffe.browser import lex
-from giraffe.net import URL, Scheme
-
-from http.server import SimpleHTTPRequestHandler
 import os
-import pytest
 import socketserver
 import threading
 import time
+from http.server import SimpleHTTPRequestHandler
+
+import pytest
+
+from giraffe.net import URL, Scheme
 
 """Test cases for the browser's net code.
 
@@ -102,7 +102,6 @@ def test_request(test_server):
 
     content = url.request()
     assert content == "<html>hi</html>"
-    assert lex(content) == "hi"
 
 
 def test_request_headers():
@@ -159,8 +158,8 @@ def test_data_scheme():
 def test_data_entities():
     raw_url = "data:text/html,&lt;div&gt;"
     url = URL(raw_url)
-    content = lex(url.request())
-    assert content == "<div>"
+    content = url.request()
+    assert content == "&lt;div&gt;"
 
 
 def test_view_source_scheme(test_server):
@@ -169,7 +168,7 @@ def test_view_source_scheme(test_server):
 
     content = url.request()
     assert content == "<html>hi</html>"
-    assert lex(content, is_viewsource=url.is_viewsource) == "<html>hi</html>"
+    assert url.is_viewsource
 
 
 def test_caching():
