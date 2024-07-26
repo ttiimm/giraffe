@@ -67,13 +67,14 @@ SLANT_ITALIC = "italic"
 @dataclass
 class DisplayUnit:
     cursor_x: int
-    cursor_y: float
+    cursor_y: float | None
     word: str
     font: tkinter.font.Font
 
 
 class Layout(object):
     def __init__(self, tokens: Sequence[Text | Tag], width: int):
+        self.line = []
         self.display_list = []
         self.cursor_x = HSTEP
         self.cursor_y = VSTEP
@@ -84,6 +85,7 @@ class Layout(object):
 
         for tok in tokens:
             self.token(tok)
+        self.flush()
 
     def token(self, tok):
         if isinstance(tok, Text):
@@ -105,21 +107,52 @@ class Layout(object):
             self.size += 2
         elif tok.tag == "/big":
             self.size -= 2
+        elif tok.tag == "br":
+            self.flush()
+        elif tok.tag == "/p":
+            self.flush()
+            self.cursor_y += VSTEP
 
     def word(self, word):
-        font = tkinter.font.Font(
-            family="Iosevka",
-            size=self.size,
-            weight=WEIGHT_BOLD if self.is_bold else WEIGHT_NORMAL,
-            slant=SLANT_ITALIC if self.is_italic else SLANT_ROMAN,
-        )
+        font = get_font(self.size, self.is_bold, self.is_italic)
         w = font.measure(word)
         if self.cursor_x + w > self.width - HSTEP:
-            self.cursor_y += lineheight(font)
-            self.cursor_x = HSTEP
-        self.display_list.append(DisplayUnit(self.cursor_x, self.cursor_y, word, font))
+            self.flush()
+
+        self.line.append(DisplayUnit(self.cursor_x, None, word, font))
         self.cursor_x += w + font.measure(" ")
+
+    def flush(self):
+        if not self.line:
+            return
+        metrics = [du.font.metrics() for du in self.line]
+        max_ascent = max([metric["ascent"] for metric in metrics])
+        baseline = self.cursor_y + 1.25 * max_ascent
+
+        for du in self.line:
+            du.cursor_y = baseline - du.font.metrics("ascent")
+            self.display_list.append(du)
+        max_descent = max([metric["descent"] for metric in metrics])
+        self.cursor_y = baseline + 1.25 * max_descent
+        self.cursor_x = HSTEP
+        self.line = []
 
 
 def lineheight(font):
     return font.metrics("linespace") * 1.25
+
+
+FONTS = {}
+
+
+def get_font(size, is_bold, is_italic):
+    weight = WEIGHT_BOLD if is_bold else WEIGHT_NORMAL
+    slant = SLANT_ITALIC if is_italic else SLANT_ROMAN
+    key = (size, weight, slant)
+    if key not in FONTS:
+        font = tkinter.font.Font(
+            family="Iosevka", size=size, weight=weight, slant=slant
+        )
+        label = tkinter.Label(font=font)
+        FONTS[key] = (font, label)
+    return FONTS[key][0]

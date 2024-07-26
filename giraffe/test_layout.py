@@ -63,8 +63,8 @@ def test_layout(_setup_tkinter):
     display_list = Layout(tokens, WIDTH).display_list
     assert display_list[0].word == "hi"
     assert display_list[1].word == "mom"
-    assert display_list[0].cursor_y == VSTEP
-    assert display_list[1].cursor_y == VSTEP
+    assert display_list[0].cursor_y == 21.0
+    assert display_list[1].cursor_y == 21.0
     assert display_list[0].cursor_x < display_list[1].cursor_x
 
 
