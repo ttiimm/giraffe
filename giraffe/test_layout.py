@@ -2,8 +2,7 @@ import tkinter
 
 import pytest
 
-from giraffe.browser import WIDTH
-from giraffe.layout import VSTEP, Layout, Tag, Text, lex
+from giraffe.layout import HSTEP, Layout, Tag, Text, lex
 
 """Test cases for the browser's net code.
 
@@ -11,6 +10,8 @@ These test help verify the content and exercises for Chapter 3 of
 [Web Browser Engineering](https://browser.engineering/text.html).
 """
 
+
+WIDTH = 800
 
 LOREM_IPSUM = """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore 
 et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo 
@@ -74,3 +75,22 @@ def test_layout_wraps(_setup_tkinter):
     assert display_list[0].word == "Lorem"
     assert display_list[-1].word == "laborum."
     assert display_list[0].cursor_y < display_list[-1].cursor_y
+
+
+def test_center(_setup_tkinter):
+    width = 100
+    tokens = [Tag('h1 class="title"'), Text("hi"), Tag("/h1")]
+    display_list = Layout(tokens, width).display_list
+    first = display_list[0]
+    assert first.word == "hi"
+    assert first.cursor_x == 49
+
+def test_sup(_setup_tkinter):
+    width = 100
+    tokens = [Text("hey"), Tag('sup'), Text("guy"), Tag("/sup")]
+    display_list = Layout(tokens, width).display_list
+    first, second = display_list[0], display_list[1]
+    assert first.word == "hey"
+    assert second.word == "guy"
+    assert first.cursor_y <= second.cursor_y
+    assert first.font['size'] != second.font['size']

@@ -1,6 +1,7 @@
+import math
 import tkinter.font
 from dataclasses import dataclass
-from typing import List, Sequence
+from typing import List, Literal, Sequence
 
 """The lexing and layout code used by the browser.
 
@@ -65,21 +66,36 @@ SLANT_ITALIC = "italic"
 
 
 @dataclass
+class Styling:
+    font: tkinter.font.Font
+    alignment: Literal["None", "Top"] = "None"
+
+
+@dataclass
+class LineUnit:
+    cursor_x: int
+    word: str
+    style: Styling
+
+
+@dataclass
 class DisplayUnit:
     cursor_x: int
-    cursor_y: float | None
+    cursor_y: float
     word: str
     font: tkinter.font.Font
 
 
 class Layout(object):
     def __init__(self, tokens: Sequence[Text | Tag], width: int):
-        self.line = []
-        self.display_list = []
+        self.line: List[LineUnit] = []
+        self.display_list: List[DisplayUnit] = []
         self.cursor_x = HSTEP
         self.cursor_y = VSTEP
         self.is_bold = False
         self.is_italic = False
+        self.is_centering = False
+        self.is_sup = False
         self.width = width
         self.size = 12
 
@@ -112,6 +128,18 @@ class Layout(object):
         elif tok.tag == "/p":
             self.flush()
             self.cursor_y += VSTEP
+        elif tok.tag == 'h1 class="title"':
+            self.flush()
+            self.is_centering = True
+        elif tok.tag == "/h1":
+            self.flush()
+            self.is_centering = False
+        elif tok.tag == "sup":
+            self.size = math.ceil(self.size / 2)
+            self.is_sup = True
+        elif tok.tag == "/sup":
+            self.size = self.size * 2
+            self.is_sup = False
 
     def word(self, word):
         font = get_font(self.size, self.is_bold, self.is_italic)
@@ -119,19 +147,29 @@ class Layout(object):
         if self.cursor_x + w > self.width - HSTEP:
             self.flush()
 
-        self.line.append(DisplayUnit(self.cursor_x, None, word, font))
+        style = Styling(font)
+        if self.is_sup:
+            style.alignment = "Top"
+        self.line.append(LineUnit(self.cursor_x, word, style))
         self.cursor_x += w + font.measure(" ")
 
     def flush(self):
         if not self.line:
             return
-        metrics = [du.font.metrics() for du in self.line]
+        metrics = [lu.style.font.metrics() for lu in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
         baseline = self.cursor_y + 1.25 * max_ascent
+        remaining = self.width - self.cursor_x  # assumes cursor_x is width of line
+        centering_offset = math.floor(remaining / 2.0)
 
-        for du in self.line:
-            du.cursor_y = baseline - du.font.metrics("ascent")
-            self.display_list.append(du)
+        for lu in self.line:
+            x = lu.cursor_x
+            if self.is_centering:
+                x = lu.cursor_x + centering_offset
+            y = baseline - lu.style.font.metrics("ascent")
+            if lu.style.alignment == "Top":
+                y = baseline - max_ascent
+            self.display_list.append(DisplayUnit(x, y, lu.word, lu.style.font))
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.25 * max_descent
         self.cursor_x = HSTEP
