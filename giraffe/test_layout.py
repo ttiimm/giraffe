@@ -58,9 +58,10 @@ def test_lex_unclosed_tag():
     content = "Hi!<hr"
     assert lex(content) == [Text("Hi!")]
 
+
 def test_lex_soft_hyphe():
     content = "Hi&shy;!"
-    assert lex(content) == [Text("Hi\N{soft hyphen}!")]
+    assert lex(content) == [Text("Hi\N{SOFT HYPHEN}!")]
 
 
 def test_layout(_setup_tkinter):
@@ -89,29 +90,46 @@ def test_center(_setup_tkinter):
     assert first.word == "hi"
     assert first.cursor_x == 49
 
+
 def test_sup(_setup_tkinter):
     width = 100
-    tokens = [Text("hey"), Tag('sup'), Text("guy"), Tag("/sup")]
+    tokens = [Text("hey"), Tag("sup"), Text("guy"), Tag("/sup")]
     display_list = Layout(tokens, width).display_list
     first, second = display_list[0], display_list[1]
     assert first.word == "hey"
     assert second.word == "guy"
     assert first.cursor_y == second.cursor_y
-    assert first.font['size'] != second.font['size']
+    assert first.font["size"] != second.font["size"]
+
 
 def test_soft_hyphens(_setup_tkinter):
     width = 100
-    tokens = [Text("supercalifragilis\N{soft hyphen}ticexpialidocious")]
+    tokens = [Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidocious")]
     display_list = Layout(tokens, width).display_list
     assert len(display_list) == 2
-    assert display_list[0].word[-1] == "\N{soft hyphen}"
+    assert display_list[0].word[-1] == "\N{SOFT HYPHEN}"
     assert display_list[0].cursor_y < display_list[1].cursor_y
+
 
 def test_soft_hyphens_with_multiple(_setup_tkinter):
     width = 206
-    tokens = [Text("supercalifragilis\N{soft hyphen}ticexpialidociou\N{soft hyphen}s")]
+    tokens = [Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidociou\N{SOFT HYPHEN}s")]
     display_list = Layout(tokens, width).display_list
     assert len(display_list) == 2
-    assert display_list[0].word[-1] == "\N{soft hyphen}"
+    assert display_list[0].word[-1] == "\N{SOFT HYPHEN}"
     assert display_list[1].word == "s"
     assert display_list[0].cursor_y < display_list[1].cursor_y
+
+
+def test_small_caps(_setup_tkinter):
+    width = 100
+    tokens = [Tag("abbr"), Text("like this"), Tag("/abbr")]
+    display_list = Layout(tokens, width).display_list
+    first = display_list[0]
+    second = display_list[1]
+    font_conf = first.font.config() or {"weight": None}
+    assert first.word == "LIKE"
+    assert font_conf["weight"] == "bold"
+    assert second.word == "THIS"
+    font_conf = second.font.config() or {"weight": None}
+    assert font_conf["weight"] == "bold"

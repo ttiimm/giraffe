@@ -100,6 +100,7 @@ class Layout(object):
         self.is_italic = False
         self.is_centering = False
         self.is_sup = False
+        self.is_abbr = False
         self.width = width
         self.size = 12
 
@@ -144,6 +145,12 @@ class Layout(object):
         elif tok.tag == "/sup":
             self.size = self.size * 2
             self.is_sup = False
+        elif tok.tag == "abbr":
+            self.size -= 4
+            self.is_abbr = True
+        elif tok.tag == "/abbr":
+            self.size += 4
+            self.is_abbr = False
 
     def _handle_word(self, word):
         if not self._is_overflowing(word) or SOFT_HYPHEN not in word:
@@ -166,11 +173,14 @@ class Layout(object):
             word = word[:hyph_idx]
         return hyph_idx
 
-    def word(self, word):
+    def word(self, word: str):
         if self._is_overflowing(word):
             self.flush()
 
-        font = get_font(self.size, self.is_bold, self.is_italic)
+        if self.is_abbr:
+            word = word.upper()
+
+        font = get_font(self.size, self.is_bold or self.is_abbr, self.is_italic)
         word_len = font.measure(word)
         style = Styling(font)
         if self.is_sup:
