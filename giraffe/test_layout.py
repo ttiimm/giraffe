@@ -18,6 +18,25 @@ et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullam
 consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
 Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."""
 
+APOLLINAIRE = Text("""
+        L          TE
+          A       A
+            C    V
+             R A
+             DOU
+             LOU
+            REUSE
+            QUE TU
+            PORTES
+          ET QUI T'
+          ORNE O CI
+           VILISÃ‰
+          OTE-  TU VEUX
+           LA    BIEN
+          SI      RESPI
+                  RER       - Apollinaire
+""")
+
 
 @pytest.fixture(scope="session")
 def _setup_tkinter():
@@ -69,8 +88,8 @@ def test_layout(_setup_tkinter):
     display_list = Layout(tokens, WIDTH).display_list
     assert display_list[0].word == "hi"
     assert display_list[1].word == "mom"
-    assert display_list[0].cursor_y == 21.0
-    assert display_list[1].cursor_y == 21.0
+    assert display_list[0].cursor_y == 21.5
+    assert display_list[1].cursor_y == 21.5
     assert display_list[0].cursor_x < display_list[1].cursor_x
 
 
@@ -88,7 +107,7 @@ def test_center(_setup_tkinter):
     display_list = Layout(tokens, width).display_list
     first = display_list[0]
     assert first.word == "hi"
-    assert first.cursor_x == 49
+    assert first.cursor_x == 48
 
 
 def test_sup(_setup_tkinter):
@@ -112,7 +131,7 @@ def test_soft_hyphens(_setup_tkinter):
 
 
 def test_soft_hyphens_with_multiple(_setup_tkinter):
-    width = 206
+    width = 233
     tokens = [Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidociou\N{SOFT HYPHEN}s")]
     display_list = Layout(tokens, width).display_list
     assert len(display_list) == 2
@@ -132,4 +151,34 @@ def test_small_caps(_setup_tkinter):
     assert font_conf["weight"] == "bold"
     assert second.word == "THIS"
     font_conf = second.font.config() or {"weight": None}
+    assert font_conf["weight"] == "bold"
+
+
+def test_preformated(_setup_tkinter):
+    width = 100
+    tokens = [Tag("pre"), APOLLINAIRE, Tag("/pre")]
+    display_list = Layout(tokens, width).display_list
+    assert len(display_list) == 17
+
+
+def test_preformated_bold(_setup_tkinter):
+    width = 100
+    tokens = lex("""<pre>
+    hello 
+    <b>world</b>
+</pre>""")
+    assert tokens == [
+        Tag("pre"),
+        Text("\n    hello \n    "),
+        Tag("b"),
+        Text("world"),
+        Tag("/b"),
+        Text("\n"),
+        Tag("/pre"),
+    ]
+    display_list = Layout(tokens, width).display_list
+    assert display_list[1].word == "    hello "
+    assert display_list[2].word == "    "
+    assert display_list[3].word == "world"
+    font_conf = display_list[3].font.config() or {"weight": None}
     assert font_conf["weight"] == "bold"

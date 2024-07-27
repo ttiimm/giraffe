@@ -55,6 +55,8 @@ class Browser(object):
         self.tokens = lex(body, url.is_viewsource)
         # display_list is standard browser/gui (?) terminology
         self.display_list = Layout(self.tokens, self.width).display_list
+        # TODO add logging
+        # [print(du) for du in self.display_list]
         self.draw()
 
     def draw(self):

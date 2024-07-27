@@ -101,15 +101,29 @@ class Layout(object):
         self.is_centering = False
         self.is_sup = False
         self.is_abbr = False
+        self.is_pre = False
+        self.family: str | None = None
         self.width = width
-        self.size = 12
+        self.size = 14
 
         for tok in tokens:
             self.token(tok)
         self.flush()
 
     def token(self, tok):
-        if isinstance(tok, Text):
+        if isinstance(tok, Text) and self.is_pre:
+            line = ""
+            for c in tok.text:
+                if c == "\n":
+                    self._handle_word(line)
+                    self.flush()
+                    line = ""
+                else:
+                    line += c
+            if len(line) != 0:
+                self._handle_word(line)
+
+        elif isinstance(tok, Text):
             for word in tok.text.split():
                 self._handle_word(word)
         elif tok.tag == "i":
@@ -151,6 +165,12 @@ class Layout(object):
         elif tok.tag == "/abbr":
             self.size += 4
             self.is_abbr = False
+        elif tok.tag == "pre":
+            self.is_pre = True
+            self.family = "Courier New"
+        elif tok.tag == "/pre":
+            self.is_pre = False
+            self.family = None
 
     def _handle_word(self, word):
         if not self._is_overflowing(word) or SOFT_HYPHEN not in word:
@@ -180,16 +200,21 @@ class Layout(object):
         if self.is_abbr:
             word = word.upper()
 
-        font = get_font(self.size, self.is_bold or self.is_abbr, self.is_italic)
+        font = get_font(
+            self.family, self.size, self.is_bold or self.is_abbr, self.is_italic
+        )
         word_len = font.measure(word)
         style = Styling(font)
         if self.is_sup:
             style.valignment = "Top"
         self.line.append(LineUnit(self.cursor_x, word, style))
-        self.cursor_x += word_len + font.measure(" ")
+        if not self.is_pre:
+            self.cursor_x += word_len + font.measure(" ")
+        else:
+            self.cursor_x += word_len
 
     def _is_overflowing(self, word: str) -> bool:
-        font = get_font(self.size, self.is_bold, self.is_italic)
+        font = get_font(self.family, self.size, self.is_bold, self.is_italic)
         word_len = font.measure(word)
         return self.cursor_x + word_len > self.width - HSTEP
 
@@ -223,12 +248,12 @@ def lineheight(font):
 FONTS = {}
 
 
-def get_font(size, is_bold, is_italic):
+def get_font(family, size, is_bold, is_italic):
     weight = WEIGHT_BOLD if is_bold else WEIGHT_NORMAL
     slant = SLANT_ITALIC if is_italic else SLANT_ROMAN
-    key = (size, weight, slant)
+    key = (family, size, weight, slant)
     if key not in FONTS:
-        font = tkinter.font.Font(size=size, weight=weight, slant=slant)
+        font = tkinter.font.Font(family=family, size=size, weight=weight, slant=slant)
         label = tkinter.Label(font=font)
         FONTS[key] = (font, label)
     return FONTS[key][0]
