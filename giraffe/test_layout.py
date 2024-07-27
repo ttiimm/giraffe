@@ -58,6 +58,10 @@ def test_lex_unclosed_tag():
     content = "Hi!<hr"
     assert lex(content) == [Text("Hi!")]
 
+def test_lex_soft_hyphe():
+    content = "Hi&shy;!"
+    assert lex(content) == [Text("Hi\N{soft hyphen}!")]
+
 
 def test_layout(_setup_tkinter):
     tokens = [Text("hi mom")]
@@ -92,5 +96,22 @@ def test_sup(_setup_tkinter):
     first, second = display_list[0], display_list[1]
     assert first.word == "hey"
     assert second.word == "guy"
-    assert first.cursor_y <= second.cursor_y
+    assert first.cursor_y == second.cursor_y
     assert first.font['size'] != second.font['size']
+
+def test_soft_hyphens(_setup_tkinter):
+    width = 100
+    tokens = [Text("supercalifragilis\N{soft hyphen}ticexpialidocious")]
+    display_list = Layout(tokens, width).display_list
+    assert len(display_list) == 2
+    assert display_list[0].word[-1] == "\N{soft hyphen}"
+    assert display_list[0].cursor_y < display_list[1].cursor_y
+
+def test_soft_hyphens_with_multiple(_setup_tkinter):
+    width = 206
+    tokens = [Text("supercalifragilis\N{soft hyphen}ticexpialidociou\N{soft hyphen}s")]
+    display_list = Layout(tokens, width).display_list
+    assert len(display_list) == 2
+    assert display_list[0].word[-1] == "\N{soft hyphen}"
+    assert display_list[1].word == "s"
+    assert display_list[0].cursor_y < display_list[1].cursor_y

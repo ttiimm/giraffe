@@ -49,6 +49,9 @@ def lex(body: str, is_viewsource=False) -> List[Text | Tag]:
         elif c == "&" and body[i : i + 4] == "&gt;":
             buffer += ">"
             consume += 3
+        elif c == "&" and body[i : i + 5] == "&shy;":
+            buffer += SOFT_HYPHEN
+            consume += 4
         else:
             buffer += c
     if not in_tag and buffer:
@@ -58,6 +61,7 @@ def lex(body: str, is_viewsource=False) -> List[Text | Tag]:
 
 HSTEP, VSTEP = 13, 18
 
+SOFT_HYPHEN = "\N{SOFT HYPHEN}"
 
 WEIGHT_NORMAL = "normal"
 WEIGHT_BOLD = "bold"
@@ -68,7 +72,7 @@ SLANT_ITALIC = "italic"
 @dataclass
 class Styling:
     font: tkinter.font.Font
-    alignment: Literal["None", "Top"] = "None"
+    valignment: Literal["None", "Top"] = "None"
 
 
 @dataclass
@@ -106,7 +110,7 @@ class Layout(object):
     def token(self, tok):
         if isinstance(tok, Text):
             for word in tok.text.split():
-                self.word(word)
+                self._handle_word(word)
         elif tok.tag == "i":
             self.is_italic = True
         elif tok.tag == "/i":
@@ -141,17 +145,43 @@ class Layout(object):
             self.size = self.size * 2
             self.is_sup = False
 
+    def _handle_word(self, word):
+        if not self._is_overflowing(word) or SOFT_HYPHEN not in word:
+            self.word(word)
+            return
+
+        # too long and contains a soft hyphen, try to split word on hyphen
+        hyph_idx = self._find_longest_hyph(word)
+        hyph_idx_inclusive = hyph_idx + 1
+        for sub in (word[:hyph_idx_inclusive], word[hyph_idx_inclusive:]):
+            if sub:
+                self.word(sub)
+
+    def _find_longest_hyph(self, word: str) -> int:
+        hyph_idx = len(word)
+        while SOFT_HYPHEN in word:
+            if not self._is_overflowing(word):
+                break
+            hyph_idx = word.rindex(SOFT_HYPHEN)
+            word = word[:hyph_idx]
+        return hyph_idx
+
     def word(self, word):
-        font = get_font(self.size, self.is_bold, self.is_italic)
-        w = font.measure(word)
-        if self.cursor_x + w > self.width - HSTEP:
+        if self._is_overflowing(word):
             self.flush()
 
+        font = get_font(self.size, self.is_bold, self.is_italic)
+        word_len = font.measure(word)
         style = Styling(font)
         if self.is_sup:
-            style.alignment = "Top"
+            style.valignment = "Top"
         self.line.append(LineUnit(self.cursor_x, word, style))
-        self.cursor_x += w + font.measure(" ")
+        self.cursor_x += word_len + font.measure(" ")
+
+    def _is_overflowing(self, word: str) -> bool:
+        font = get_font(self.size, self.is_bold, self.is_italic)
+        word_len = font.measure(word)
+        return self.cursor_x + word_len > self.width - HSTEP
 
     def flush(self):
         if not self.line:
@@ -167,7 +197,7 @@ class Layout(object):
             if self.is_centering:
                 x = lu.cursor_x + centering_offset
             y = baseline - lu.style.font.metrics("ascent")
-            if lu.style.alignment == "Top":
+            if lu.style.valignment == "Top":
                 y = baseline - max_ascent
             self.display_list.append(DisplayUnit(x, y, lu.word, lu.style.font))
         max_descent = max([metric["descent"] for metric in metrics])
