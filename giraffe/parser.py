@@ -9,7 +9,7 @@ This code is based on Chapter 4 of
 
 SOFT_HYPHEN = "\N{SOFT HYPHEN}"
 
-SELF_CLOSING_TAGS = [
+SELF_CLOSING_TAGS = (
     "area",
     "base",
     "br",
@@ -24,7 +24,18 @@ SELF_CLOSING_TAGS = [
     "source",
     "track",
     "wbr",
-]
+)
+HEAD_TAGS = (
+    "base",
+    "basefont",
+    "bgsound",
+    "noscript",
+    "link",
+    "meta",
+    "title",
+    "style",
+    "script",
+)
 
 
 @dataclass(kw_only=True)
@@ -44,7 +55,7 @@ class Text(Node):
 @dataclass
 class Element(Node):
     tag: str
-    attributes: Dict[str, str]
+    attributes: Dict[str, str] = field(default_factory=dict)
 
     def __str__(self) -> str:
         child_strs = ""
@@ -66,9 +77,10 @@ class Element(Node):
 
 
 class HtmlParser:
-    def __init__(self, body: str):
+    def __init__(self, body: str, do_implicit=True):
         self.body = body
         self.unfinished = []
+        self.do_implicit = do_implicit
 
     def parse(self, is_viewsource=False) -> Node:
         if is_viewsource:
@@ -113,6 +125,7 @@ class HtmlParser:
     def add_text(self, text: str):
         if text.isspace():
             return
+        self.implicit_tags(None)
         parent = self.unfinished[-1]
         node = Text(text, parent=parent)
         parent.children.append(node)
@@ -121,6 +134,8 @@ class HtmlParser:
         tag, attributes = self.get_attributes(tag)
         if tag.startswith("!"):
             return
+
+        self.implicit_tags(tag)
 
         if tag.startswith("/"):
             if len(self.unfinished) == 1:
@@ -152,11 +167,28 @@ class HtmlParser:
         return tag, attributes
 
     def finish(self):
+        if not self.unfinished:
+            self.implicit_tags(None)
         while len(self.unfinished) > 1:
             node = self.unfinished.pop()
             parent = self.unfinished[-1]
             parent.children.append(node)
         return self.unfinished.pop()
+
+    def implicit_tags(self, tag):
+        while True and self.do_implicit:
+            open_tags = [node.tag for node in self.unfinished]
+            if open_tags == [] and tag != "html":
+                self.add_tag("html")
+            elif open_tags == ["html"] and tag not in ["head", "body", "/html"]:
+                if tag in HEAD_TAGS:
+                    self.add_tag("head")
+                else:
+                    self.add_tag("body")
+            elif open_tags == ["html", "head"] and tag not in ("/head",) + HEAD_TAGS:
+                self.add_tag("/head")
+            else:
+                break
 
 
 def print_tree(node: Node, indent=0):

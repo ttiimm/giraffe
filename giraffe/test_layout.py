@@ -1,8 +1,10 @@
 import tkinter
+from typing import List
 
 import pytest
 
-from giraffe.layout import Layout, Element, Text
+from giraffe.layout import Layout
+from giraffe.parser import Node, Element, Text
 
 
 """Test cases for the browser's layout engine.
@@ -47,8 +49,8 @@ def _setup_tkinter():
 
 
 def test_layout(_setup_tkinter):
-    tokens = [Text("hi mom")]
-    display_list = Layout(tokens, WIDTH).display_list
+    nodes = Text("hi mom")
+    display_list = Layout(nodes, WIDTH).display_list
     assert display_list[0].word == "hi"
     assert display_list[1].word == "mom"
     assert display_list[0].cursor_y == 21.5
@@ -57,8 +59,8 @@ def test_layout(_setup_tkinter):
 
 
 def test_layout_wraps(_setup_tkinter):
-    tokens = [Text(LOREM_IPSUM)]
-    display_list = Layout(tokens, WIDTH).display_list
+    node = Text(LOREM_IPSUM)
+    display_list = Layout(node, WIDTH).display_list
     assert display_list[0].word == "Lorem"
     assert display_list[-1].word == "laborum."
     assert display_list[0].cursor_y < display_list[-1].cursor_y
@@ -66,8 +68,8 @@ def test_layout_wraps(_setup_tkinter):
 
 def test_center(_setup_tkinter):
     width = 100
-    tokens = [Element('h1 class="title"'), Text("hi"), Element("/h1")]
-    display_list = Layout(tokens, width).display_list
+    nodes = treeify(Element("h1", attributes={"class": '"title"'}), Text("hi"))
+    display_list = Layout(nodes, width).display_list
     first = display_list[0]
     assert first.word == "hi"
     assert first.cursor_x == 48
@@ -75,8 +77,10 @@ def test_center(_setup_tkinter):
 
 def test_sup(_setup_tkinter):
     width = 100
-    tokens = [Text("hey"), Element("sup"), Text("guy"), Element("/sup")]
-    display_list = Layout(tokens, width).display_list
+    sup_tag = Element("sup")
+    nodes = treeify(Element("div"), [Text("hey"), sup_tag])
+    treeify(sup_tag, Text("guy"))
+    display_list = Layout(nodes, width).display_list
     first, second = display_list[0], display_list[1]
     assert first.word == "hey"
     assert second.word == "guy"
@@ -86,8 +90,8 @@ def test_sup(_setup_tkinter):
 
 def test_soft_hyphens(_setup_tkinter):
     width = 100
-    tokens = [Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidocious")]
-    display_list = Layout(tokens, width).display_list
+    nodes = Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidocious")
+    display_list = Layout(nodes, width).display_list
     assert len(display_list) == 2
     assert display_list[0].word[-1] == "\N{SOFT HYPHEN}"
     assert display_list[0].cursor_y < display_list[1].cursor_y
@@ -95,8 +99,8 @@ def test_soft_hyphens(_setup_tkinter):
 
 def test_soft_hyphens_with_multiple(_setup_tkinter):
     width = 233
-    tokens = [Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidociou\N{SOFT HYPHEN}s")]
-    display_list = Layout(tokens, width).display_list
+    nodes = Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidociou\N{SOFT HYPHEN}s")
+    display_list = Layout(nodes, width).display_list
     assert len(display_list) == 2
     assert display_list[0].word[-1] == "\N{SOFT HYPHEN}"
     assert display_list[1].word == "s"
@@ -105,8 +109,8 @@ def test_soft_hyphens_with_multiple(_setup_tkinter):
 
 def test_small_caps(_setup_tkinter):
     width = 100
-    tokens = [Element("abbr"), Text("like this"), Element("/abbr")]
-    display_list = Layout(tokens, width).display_list
+    nodes = treeify(Element("abbr"), Text("like this"))
+    display_list = Layout(nodes, width).display_list
     first = display_list[0]
     second = display_list[1]
     font_conf = first.font.config() or {"weight": None}
@@ -119,29 +123,30 @@ def test_small_caps(_setup_tkinter):
 
 def test_preformated(_setup_tkinter):
     width = 100
-    tokens = [Element("pre"), APOLLINAIRE, Element("/pre")]
-    display_list = Layout(tokens, width).display_list
+    nodes = treeify(Element("pre"), APOLLINAIRE)
+    display_list = Layout(nodes, width).display_list
     assert len(display_list) == 17
 
 
-# def test_preformated_bold(_setup_tkinter):
-#     width = 100
-#     tokens = lex("""<pre>
-#     hello 
-#     <b>world</b>
-# </pre>""")
-#     assert tokens == [
-#         Element("pre"),
-#         Text("\n    hello \n    "),
-#         Element("b"),
-#         Text("world"),
-#         Element("/b"),
-#         Text("\n"),
-#         Element("/pre"),
-#     ]
-#     display_list = Layout(tokens, width).display_list
-#     assert display_list[1].word == "    hello "
-#     assert display_list[2].word == "    "
-#     assert display_list[3].word == "world"
-#     font_conf = display_list[3].font.config() or {"weight": None}
-#     assert font_conf["weight"] == "bold"
+def test_preformated_bold(_setup_tkinter):
+    width = 100
+    b_tag = Element("b")
+    node = treeify(Element("pre"), [Text("    hello"), b_tag])
+    treeify(b_tag, Text("world"))
+    display_list = Layout(node, width).display_list
+    assert display_list[0].word == "    hello"
+    assert display_list[1].word == "world"
+    font_conf = display_list[1].font.config() or {"weight": None}
+    assert font_conf["weight"] == "bold"
+
+
+def treeify(parent: Node, children: Node | List[Node]) -> Node:
+    """Sets the parent/child relationships between a parent and children."""
+
+    if not isinstance(children, List):
+        children = [children]
+
+    for child in children:
+        parent.children.append(child)
+        child.parent = parent
+    return parent

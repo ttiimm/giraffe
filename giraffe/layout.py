@@ -1,9 +1,9 @@
 import math
 import tkinter.font
 from dataclasses import dataclass
-from typing import List, Literal, Sequence
+from typing import List, Literal
 
-from giraffe.parser import SOFT_HYPHEN, Node, Text, Element
+from giraffe.parser import SOFT_HYPHEN, Node, Text
 
 """The layout code used by the browser.
 
@@ -92,7 +92,7 @@ class Layout(object):
             self.size += 2
         elif tag == "br":
             self.flush()
-        elif tag == 'h1 class="title"':
+        elif tag == "h1":
             self.flush()
             self.is_centering = True
         elif tag == "sup":
