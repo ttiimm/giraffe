@@ -3,7 +3,7 @@ import tkinter.font
 from dataclasses import dataclass
 from typing import List, Literal, Sequence
 
-from giraffe.parser import SOFT_HYPHEN, Text, Element
+from giraffe.parser import SOFT_HYPHEN, Node, Text, Element
 
 """The layout code used by the browser.
 
@@ -42,7 +42,7 @@ class DisplayUnit:
 
 
 class Layout(object):
-    def __init__(self, tokens: Sequence[Text | Element], width: int):
+    def __init__(self, dom: Node, width: int):
         self.line: List[LineUnit] = []
         self.display_list: List[DisplayUnit] = []
         self.cursor_x = HSTEP
@@ -57,14 +57,13 @@ class Layout(object):
         self.width = width
         self.size = 14
 
-        for tok in tokens:
-            self.token(tok)
+        self.recurse(dom)
         self.flush()
 
-    def token(self, tok):
-        if isinstance(tok, Text) and self.is_pre:
+    def recurse(self, tree):
+        if isinstance(tree, Text) and self.is_pre:
             line = ""
-            for c in tok.text:
+            for c in tree.text:
                 if c == "\n":
                     self._handle_word(line)
                     self.flush()
@@ -73,53 +72,61 @@ class Layout(object):
                     line += c
             if len(line) != 0:
                 self._handle_word(line)
-
-        elif isinstance(tok, Text):
-            for word in tok.text.split():
+        elif isinstance(tree, Text):
+            for word in tree.text.split():
                 self._handle_word(word)
-        elif tok.tag == "i":
+        else:
+            self.open_tag(tree.tag)
+            for child in tree.children:
+                self.recurse(child)
+            self.close_tag(tree.tag)
+
+    def open_tag(self, tag):
+        if tag == "i":
             self.is_italic = True
-        elif tok.tag == "/i":
-            self.is_italic = False
-        elif tok.tag == "b":
+        elif tag == "b":
             self.is_bold = True
-        elif tok.tag == "/b":
-            self.is_bold = False
-        elif tok.tag == "small":
+        elif tag == "small":
             self.size -= 2
-        elif tok.tag == "/small":
+        elif tag == "big":
             self.size += 2
-        elif tok.tag == "big":
-            self.size += 2
-        elif tok.tag == "/big":
-            self.size -= 2
-        elif tok.tag == "br":
+        elif tag == "br":
             self.flush()
-        elif tok.tag == "/p":
-            self.flush()
-            self.cursor_y += VSTEP
-        elif tok.tag == 'h1 class="title"':
+        elif tag == 'h1 class="title"':
             self.flush()
             self.is_centering = True
-        elif tok.tag == "/h1":
-            self.flush()
-            self.is_centering = False
-        elif tok.tag == "sup":
+        elif tag == "sup":
             self.size = math.ceil(self.size / 2)
             self.is_sup = True
-        elif tok.tag == "/sup":
-            self.size = self.size * 2
-            self.is_sup = False
-        elif tok.tag == "abbr":
+        elif tag == "abbr":
             self.size -= 4
             self.is_abbr = True
-        elif tok.tag == "/abbr":
-            self.size += 4
-            self.is_abbr = False
-        elif tok.tag == "pre":
+        elif tag == "pre":
             self.is_pre = True
             self.family = "Courier New"
-        elif tok.tag == "/pre":
+
+    def close_tag(self, tag):
+        if tag == "i":
+            self.is_italic = False
+        elif tag == "b":
+            self.is_bold = False
+        elif tag == "small":
+            self.size += 2
+        elif tag == "big":
+            self.size -= 2
+        elif tag == "p":
+            self.flush()
+            self.cursor_y += VSTEP
+        elif tag == "h1":
+            self.flush()
+            self.is_centering = False
+        elif tag == "sup":
+            self.size = self.size * 2
+            self.is_sup = False
+        elif tag == "abbr":
+            self.size += 4
+            self.is_abbr = False
+        elif tag == "pre":
             self.is_pre = False
             self.family = None
 

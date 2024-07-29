@@ -5,8 +5,8 @@ import tkinter.font
 from tkinter import BOTH
 
 from giraffe.layout import VSTEP, Layout, lineheight
-from giraffe.net import URL
-from giraffe.parser import lex
+from giraffe.net import ABOUT_BLANK, URL
+from giraffe.parser import HtmlParser, Node
 
 """An implementation of browser gui code for displaying web pages.
 
@@ -36,7 +36,7 @@ class Browser(object):
         self.canvas.pack(fill=BOTH, expand=DO_EXPAND)
         self.scroll = 0
         self.display_list = []
-        self.tokens = []
+        self.nodes: Node = HtmlParser(ABOUT_BLANK).parse()
         self.location = ""
         self.window.bind(sequence="<Down>", func=self.scrolldown)
         self.window.bind(sequence="<Up>", func=self.scrollup)
@@ -53,9 +53,9 @@ class Browser(object):
 
         body = url.request()
         self.location = url
-        self.tokens = lex(body, url.is_viewsource)
+        self.nodes = HtmlParser(body).parse(url.is_viewsource)
         # display_list is standard browser/gui (?) terminology
-        self.display_list = Layout(self.tokens, self.width).display_list
+        self.display_list = Layout(self.nodes, self.width).display_list
         # TODO add logging
         # [print(du) for du in self.display_list]
         self.draw()
@@ -94,7 +94,7 @@ class Browser(object):
         self.width = e.width
         self.height = e.height
         self.display_list = Layout(
-            self.tokens, self.width - SCROLLBAR_WIDTH
+            self.nodes, self.width - SCROLLBAR_WIDTH
         ).display_list
         self.draw()
 
