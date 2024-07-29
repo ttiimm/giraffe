@@ -3,65 +3,16 @@ import tkinter.font
 from dataclasses import dataclass
 from typing import List, Literal, Sequence
 
-"""The lexing and layout code used by the browser.
+from giraffe.parser import SOFT_HYPHEN, Text, Element
+
+"""The layout code used by the browser.
 
 This code is based on Chapter 3 of 
 [Web Browser Engineering](https://browser.engineering/text.html).
 """
 
 
-@dataclass
-class Text:
-    text: str
-
-
-@dataclass
-class Tag:
-    tag: str
-
-
-def lex(body: str, is_viewsource=False) -> List[Text | Tag]:
-    if is_viewsource:
-        return [Text(body)]
-
-    out = []
-    buffer = ""
-    in_tag = False
-    consume = 0
-
-    for i, c in enumerate(body):
-        if consume:
-            consume -= 1
-            continue
-
-        if c == "<":
-            in_tag = True
-            if buffer:
-                out.append(Text(buffer))
-            buffer = ""
-        elif c == ">":
-            in_tag = False
-            out.append(Tag(buffer))
-            buffer = ""
-        elif c == "&" and body[i : i + 4] == "&lt;":
-            buffer += "<"
-            consume += 3
-        elif c == "&" and body[i : i + 4] == "&gt;":
-            buffer += ">"
-            consume += 3
-        elif c == "&" and body[i : i + 5] == "&shy;":
-            buffer += SOFT_HYPHEN
-            consume += 4
-        else:
-            buffer += c
-    if not in_tag and buffer:
-        out.append(Text(buffer))
-    return out
-
-
 HSTEP, VSTEP = 13, 18
-
-SOFT_HYPHEN = "\N{SOFT HYPHEN}"
 
 WEIGHT_NORMAL = "normal"
 WEIGHT_BOLD = "bold"
@@ -91,7 +42,7 @@ class DisplayUnit:
 
 
 class Layout(object):
-    def __init__(self, tokens: Sequence[Text | Tag], width: int):
+    def __init__(self, tokens: Sequence[Text | Element], width: int):
         self.line: List[LineUnit] = []
         self.display_list: List[DisplayUnit] = []
         self.cursor_x = HSTEP

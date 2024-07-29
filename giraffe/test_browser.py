@@ -5,7 +5,7 @@ from http.server import SimpleHTTPRequestHandler
 import pytest
 
 from giraffe.browser import Browser
-from giraffe.layout import Tag
+from giraffe.layout import Element
 from giraffe.net import URL
 
 """Test cases for the browser's net code.
@@ -38,12 +38,12 @@ def test_with_malformed_url():
     assert browser.location == URL("about:blank")
     assert browser.display_list == []
     assert browser.tokens == [
-        Tag("html"),
-        Tag("head"),
-        Tag("/head"),
-        Tag("body"),
-        Tag("/body"),
-        Tag("/html"),
+        Element("html"),
+        Element("head"),
+        Element("/head"),
+        Element("body"),
+        Element("/body"),
+        Element("/html"),
     ]
 
 

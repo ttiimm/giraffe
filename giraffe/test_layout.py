@@ -2,9 +2,10 @@ import tkinter
 
 import pytest
 
-from giraffe.layout import HSTEP, Layout, Tag, Text, lex
+from giraffe.layout import Layout, Element, Text
+from giraffe.parser import lex
 
-"""Test cases for the browser's net code.
+"""Test cases for the browser's layout engine.
 
 These test help verify the content and exercises for Chapter 3 of
 [Web Browser Engineering](https://browser.engineering/text.html).
@@ -45,44 +46,6 @@ def _setup_tkinter():
     pass
 
 
-def test_lex():
-    content = "<html>hi</html>"
-    assert lex(content) == [Tag(tag="html"), Text(text="hi"), Tag(tag="/html")]
-
-
-def test_lex_with_entities():
-    content = lex("&lt;div&gt;")
-    assert content == [Text("<div>")]
-
-
-def test_lext_when_viewsource():
-    content = "<html>hi</html>"
-    assert lex(content, is_viewsource=True) == [Text("<html>hi</html>")]
-
-
-def test_lex_with_emoji():
-    content = """<html><head><meta charset="utf-8"></head><body>
-        &#9924; <!-- Snowman emoji -->
-        &#128512; <!-- Smiley face emoji -->
-        ⛄ 
-        😀
-    </body></html>
-    """
-    # FIXME: handle emoji when encoded
-    tokens = lex(content)
-    assert tokens[9] == Text("\n        ⛄ \n        😀\n    ")
-
-
-def test_lex_unclosed_tag():
-    content = "Hi!<hr"
-    assert lex(content) == [Text("Hi!")]
-
-
-def test_lex_soft_hyphe():
-    content = "Hi&shy;!"
-    assert lex(content) == [Text("Hi\N{SOFT HYPHEN}!")]
-
-
 def test_layout(_setup_tkinter):
     tokens = [Text("hi mom")]
     display_list = Layout(tokens, WIDTH).display_list
@@ -103,7 +66,7 @@ def test_layout_wraps(_setup_tkinter):
 
 def test_center(_setup_tkinter):
     width = 100
-    tokens = [Tag('h1 class="title"'), Text("hi"), Tag("/h1")]
+    tokens = [Element('h1 class="title"'), Text("hi"), Element("/h1")]
     display_list = Layout(tokens, width).display_list
     first = display_list[0]
     assert first.word == "hi"
@@ -112,7 +75,7 @@ def test_center(_setup_tkinter):
 
 def test_sup(_setup_tkinter):
     width = 100
-    tokens = [Text("hey"), Tag("sup"), Text("guy"), Tag("/sup")]
+    tokens = [Text("hey"), Element("sup"), Text("guy"), Element("/sup")]
     display_list = Layout(tokens, width).display_list
     first, second = display_list[0], display_list[1]
     assert first.word == "hey"
@@ -142,7 +105,7 @@ def test_soft_hyphens_with_multiple(_setup_tkinter):
 
 def test_small_caps(_setup_tkinter):
     width = 100
-    tokens = [Tag("abbr"), Text("like this"), Tag("/abbr")]
+    tokens = [Element("abbr"), Text("like this"), Element("/abbr")]
     display_list = Layout(tokens, width).display_list
     first = display_list[0]
     second = display_list[1]
@@ -156,7 +119,7 @@ def test_small_caps(_setup_tkinter):
 
 def test_preformated(_setup_tkinter):
     width = 100
-    tokens = [Tag("pre"), APOLLINAIRE, Tag("/pre")]
+    tokens = [Element("pre"), APOLLINAIRE, Element("/pre")]
     display_list = Layout(tokens, width).display_list
     assert len(display_list) == 17
 
@@ -168,13 +131,13 @@ def test_preformated_bold(_setup_tkinter):
     <b>world</b>
 </pre>""")
     assert tokens == [
-        Tag("pre"),
+        Element("pre"),
         Text("\n    hello \n    "),
-        Tag("b"),
+        Element("b"),
         Text("world"),
-        Tag("/b"),
+        Element("/b"),
         Text("\n"),
-        Tag("/pre"),
+        Element("/pre"),
     ]
     display_list = Layout(tokens, width).display_list
     assert display_list[1].word == "    hello "

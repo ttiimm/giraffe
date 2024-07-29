@@ -1,0 +1,45 @@
+from giraffe.parser import Element, Text, lex
+
+"""Test cases for the browser's HTML parser.
+
+These test help verify the content and exercises for Chapter 4 of
+[Web Browser Engineering](https://browser.engineering/html.html).
+"""
+
+
+def test_lex():
+    content = "<html>hi</html>"
+    assert lex(content) == [Element(tag="html"), Text(text="hi"), Element(tag="/html")]
+
+
+def test_lex_with_entities():
+    content = lex("&lt;div&gt;")
+    assert content == [Text("<div>")]
+
+
+def test_lext_when_viewsource():
+    content = "<html>hi</html>"
+    assert lex(content, is_viewsource=True) == [Text("<html>hi</html>")]
+
+
+def test_lex_with_emoji():
+    content = """<html><head><meta charset="utf-8"></head><body>
+        &#9924; <!-- Snowman emoji -->
+        &#128512; <!-- Smiley face emoji -->
+        ⛄ 
+        😀
+    </body></html>
+    """
+    # FIXME: handle emoji when encoded
+    tokens = lex(content)
+    assert tokens[9] == Text("\n        ⛄ \n        😀\n    ")
+
+
+def test_lex_unclosed_tag():
+    content = "Hi!<hr"
+    assert lex(content) == [Text("Hi!")]
+
+
+def test_lex_soft_hyphe():
+    content = "Hi&shy;!"
+    assert lex(content) == [Text("Hi\N{SOFT HYPHEN}!")]

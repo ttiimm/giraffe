@@ -4,8 +4,9 @@ import tkinter
 import tkinter.font
 from tkinter import BOTH
 
-from giraffe.layout import VSTEP, Layout, lex, lineheight
+from giraffe.layout import VSTEP, Layout, lineheight
 from giraffe.net import URL
+from giraffe.parser import lex
 
 """An implementation of browser gui code for displaying web pages.
 
