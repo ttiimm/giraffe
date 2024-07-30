@@ -40,6 +40,20 @@ def test_parse_with_comment_start():
     assert str(dom) == "<html>hi</html>"
 
 
+def test_sibling_paragraphs():
+    dom = HtmlParser("<body><p>hello</p><p>world</p>", do_implicit=False).parse()
+    assert len(dom.children) == 2
+    assert str(dom.children[0]) == "<p>hello</p>"
+    assert str(dom.children[1]) == "<p>world</p>"
+
+
+def test_sibling_paragraphs_unfinished():
+    dom = HtmlParser("<body><p>hello<p>world</p>", do_implicit=False).parse()
+    assert len(dom.children) == 2
+    assert str(dom.children[0]) == "<p>hello</p>"
+    assert str(dom.children[1]) == "<p>world</p>"
+
+
 def test_parse_with_void_tag():
     dom = HtmlParser("<html><br>hi</html>", do_implicit=False).parse()
     assert str(dom) == "<html><br>hi</html>"

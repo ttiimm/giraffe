@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Self
+from typing import Dict, List, Self, TypeVar
 
 """The lexing and parsing code used by the browser.
 
@@ -40,7 +40,7 @@ HEAD_TAGS = (
 
 @dataclass(kw_only=True)
 class Node:
-    parent: Self | None = None
+    parent: "Element | None" = None
     children: List["Node"] = field(default_factory=list)
 
 
@@ -79,7 +79,7 @@ class Element(Node):
 class HtmlParser:
     def __init__(self, body: str, do_implicit=True):
         self.body = body
-        self.unfinished = []
+        self.unfinished: List[Element] = []
         self.do_implicit = do_implicit
 
     def parse(self, is_viewsource=False) -> Node:
@@ -140,15 +140,26 @@ class HtmlParser:
         if tag.startswith("/"):
             if len(self.unfinished) == 1:
                 return
-            node = self.unfinished.pop()
+            node = self.unfinished[-1]
+            siblings = []
+            while node.tag == self.unfinished[-1].tag:
+                siblings.append(self.unfinished.pop())
+            node = siblings[-1]
             parent = self.unfinished[-1]
             parent.children.append(node)
+            if len(siblings) > 1:
+                for s in siblings[:-1]:
+                    self.unfinished.append(s)
         elif tag in SELF_CLOSING_TAGS:
             parent = self.unfinished[-1]
             node = Element(tag, attributes, parent=parent)
             parent.children.append(node)
         else:
             parent = self.unfinished[-1] if self.unfinished else None
+            # XXX: not sure parent.tag == tag is going to work in all cases, should consult
+            # the spec
+            if parent is not None and parent.tag == tag:
+                parent = parent.parent
             node = Element(tag, attributes, parent=parent)
             self.unfinished.append(node)
 
