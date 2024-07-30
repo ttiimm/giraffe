@@ -28,6 +28,18 @@ def test_parse_ignores_ws():
     assert str(dom) == "<html>hi</html>"
 
 
+def test_parse_ignores_comment():
+    dom = HtmlParser(
+        "<html><!-- ignore me please -->hi</html>", do_implicit=False
+    ).parse()
+    assert str(dom) == "<html>hi</html>"
+
+
+def test_parse_with_comment_start():
+    dom = HtmlParser("<html><!-->hi</html>", do_implicit=False).parse()
+    assert str(dom) == "<html>hi</html>"
+
+
 def test_parse_with_void_tag():
     dom = HtmlParser("<html><br>hi</html>", do_implicit=False).parse()
     assert str(dom) == "<html><br>hi</html>"
@@ -58,12 +70,12 @@ def test_parse_with_implicit_body():
     assert str(dom) == '<html><head></head><body><div id="main" >hi</div></body></html>'
 
 
-def test_lext_when_viewsource():
+def test_parse_when_viewsource():
     dom = HtmlParser("<html>hi</html>", do_implicit=False).parse(is_viewsource=True)
     assert str(dom) == "<view-source><html>hi</html></view-source>"
 
 
-def test_lex_with_emoji():
+def test_parse_with_emoji():
     content = """<html><head><meta charset="utf-8"></head><body>
         &#9924; <!-- Snowman emoji -->
         &#128512; <!-- Smiley face emoji -->
@@ -77,13 +89,13 @@ def test_lex_with_emoji():
     assert "😀" in str(dom)
 
 
-def test_lex_unclosed_tag():
+def test_parse_unclosed_tag():
     content = "Hi!<hr"
     dom = HtmlParser(content).parse()
     assert str(dom) == "<html><body>Hi!</body></html>"
 
 
-def test_lex_soft_hyphe():
+def test_parse_soft_hyphe():
     content = "<body>Hi&shy;!</body>"
     dom = HtmlParser(content, do_implicit=False).parse()
     assert str(dom) == "<body>Hi\N{SOFT HYPHEN}!</body>"
