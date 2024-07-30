@@ -45,7 +45,7 @@ def test_parse_with_implicit_html():
 
 def test_parse_with_implicit_head():
     dom = HtmlParser("<html><meta></html").parse()
-    assert str(dom) == '<html><head><meta></head></html>'
+    assert str(dom) == "<html><head><meta></head></html>"
 
 
 def test_parse_with_implicit_head_no_headers():
@@ -63,24 +63,27 @@ def test_lext_when_viewsource():
     assert str(dom) == "<view-source><html>hi</html></view-source>"
 
 
-# def test_lex_with_emoji():
-#     content = """<html><head><meta charset="utf-8"></head><body>
-#         &#9924; <!-- Snowman emoji -->
-#         &#128512; <!-- Smiley face emoji -->
-#         ⛄
-#         😀
-#     </body></html>
-#     """
-#     # FIXME: handle emoji when encoded
-#     tokens = lex(content)
-#     assert tokens[9] == Text("\n        ⛄ \n        😀\n    ")
+def test_lex_with_emoji():
+    content = """<html><head><meta charset="utf-8"></head><body>
+        &#9924; <!-- Snowman emoji -->
+        &#128512; <!-- Smiley face emoji -->
+        ⛄
+        😀
+    </body></html>
+    """
+    # FIXME: handle emoji when encoded
+    dom = HtmlParser(content).parse()
+    assert "⛄" in str(dom)
+    assert "😀" in str(dom)
 
 
-# def test_lex_unclosed_tag():
-#     content = "Hi!<hr"
-#     assert lex(content) == [Text("Hi!")]
+def test_lex_unclosed_tag():
+    content = "Hi!<hr"
+    dom = HtmlParser(content).parse()
+    assert str(dom) == "<html><body>Hi!</body></html>"
 
 
-# def test_lex_soft_hyphe():
-#     content = "Hi&shy;!"
-#     assert lex(content) == [Text("Hi\N{SOFT HYPHEN}!")]
+def test_lex_soft_hyphe():
+    content = "<body>Hi&shy;!</body>"
+    dom = HtmlParser(content, do_implicit=False).parse()
+    assert str(dom) == "<body>Hi\N{SOFT HYPHEN}!</body>"
