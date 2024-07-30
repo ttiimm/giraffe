@@ -54,6 +54,21 @@ def test_sibling_paragraphs_unfinished():
     assert str(dom.children[1]) == "<p>world</p>"
 
 
+def test_sibling_divs_finished():
+    dom = HtmlParser(
+        "<body><div>hello</div><div>world</div>", do_implicit=False
+    ).parse()
+    assert len(dom.children) == 2
+    assert str(dom.children[0]) == "<div>hello</div>"
+    assert str(dom.children[1]) == "<div>world</div>"
+
+
+def test_sibling_divs_unfinished():
+    dom = HtmlParser("<body><div>hello<div>world</div>", do_implicit=False).parse()
+    assert len(dom.children) == 1
+    assert str(dom.children[0]) == "<div>hello<div>world</div></div>"
+
+
 def test_parse_with_void_tag():
     dom = HtmlParser("<html><br>hi</html>", do_implicit=False).parse()
     assert str(dom) == "<html><br>hi</html>"

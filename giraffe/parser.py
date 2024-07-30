@@ -25,6 +25,10 @@ SELF_CLOSING_TAGS = (
     "track",
     "wbr",
 )
+SIBLING_TAGS = (
+    "p",
+    "li",
+)
 HEAD_TAGS = (
     "base",
     "basefont",
@@ -137,7 +141,7 @@ class HtmlParser:
 
         self.implicit_tags(tag)
 
-        if tag.startswith("/"):
+        if tag.startswith("/") and tag[1:] in SIBLING_TAGS:
             if len(self.unfinished) == 1:
                 return
             node = self.unfinished[-1]
@@ -150,16 +154,24 @@ class HtmlParser:
             if len(siblings) > 1:
                 for s in siblings[:-1]:
                     self.unfinished.append(s)
+        elif tag.startswith("/"):
+            if len(self.unfinished) == 1:
+                return
+            node = self.unfinished.pop()
+            parent = self.unfinished[-1]
+            parent.children.append(node)
         elif tag in SELF_CLOSING_TAGS:
             parent = self.unfinished[-1]
             node = Element(tag, attributes, parent=parent)
             parent.children.append(node)
-        else:
+        elif tag in SIBLING_TAGS:
             parent = self.unfinished[-1] if self.unfinished else None
-            # XXX: not sure parent.tag == tag is going to work in all cases, should consult
-            # the spec
             if parent is not None and parent.tag == tag:
                 parent = parent.parent
+            node = Element(tag, attributes, parent=parent)
+            self.unfinished.append(node)
+        else:
+            parent = self.unfinished[-1] if self.unfinished else None
             node = Element(tag, attributes, parent=parent)
             self.unfinished.append(node)
 
