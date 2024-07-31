@@ -45,7 +45,7 @@ HEAD_TAGS = (
 @dataclass(kw_only=True)
 class Node:
     parent: "Element | None" = None
-    children: List["Node"] = field(default_factory=list)
+    children: List["Text | Element"] = field(default_factory=list)
 
 
 @dataclass
@@ -94,7 +94,9 @@ class HtmlParser:
             return self.finish()
 
         buffer = ""
+        # XXX: probably state machine would help here
         in_tag = False
+        in_script = False
         consume = 0
 
         for i, c in enumerate(self.body):
@@ -102,13 +104,22 @@ class HtmlParser:
                 consume -= 1
                 continue
 
-            if c == "<":
+            if (
+                c == "<"
+                and not in_script
+                or c == "<"
+                and in_script
+                and self.body[i : i + 9] == "</script>"
+            ):
                 in_tag = True
+                in_script = False
                 if buffer:
                     self.add_text(buffer)
                 buffer = ""
-            elif c == ">":
+            elif c == ">" and not in_script:
                 in_tag = False
+                if buffer == "script":
+                    in_script = True
                 self.add_tag(buffer)
                 buffer = ""
             elif c == "&" and self.body[i : i + 4] == "&lt;":
@@ -174,6 +185,8 @@ class HtmlParser:
             parent = self.unfinished[-1] if self.unfinished else None
             node = Element(tag, attributes, parent=parent)
             self.unfinished.append(node)
+            if tag == "script":
+                self.in_script = True
 
     def get_attributes(self, text: str):
         parts = text.split()

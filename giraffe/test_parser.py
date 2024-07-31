@@ -1,4 +1,4 @@
-from giraffe.parser import HtmlParser
+from giraffe.parser import HtmlParser, Text
 
 """Test cases for the browser's HTML parser.
 
@@ -67,6 +67,22 @@ def test_sibling_divs_unfinished():
     dom = HtmlParser("<body><div>hello<div>world</div>", do_implicit=False).parse()
     assert len(dom.children) == 1
     assert str(dom.children[0]) == "<div>hello<div>world</div></div>"
+
+
+def test_script_with_angle():
+    dom = HtmlParser(
+        '<script>alert("1 < 2 = " + (1 < 2));</script>', do_implicit=False
+    ).parse()
+    assert len(dom.children) == 1
+    script_text = dom.children[0]
+    assert isinstance(script_text, Text)
+    assert script_text.text == 'alert("1 < 2 = " + (1 < 2));'
+
+
+def test_script_with_empty():
+    dom = HtmlParser("<script></script>", do_implicit=False).parse()
+    assert len(dom.children) == 0
+    assert str(dom) == "<script></script>"
 
 
 def test_parse_with_void_tag():
