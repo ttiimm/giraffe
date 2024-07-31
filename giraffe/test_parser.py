@@ -95,6 +95,23 @@ def test_parse_with_attributes():
     assert str(dom) == '<html><div id="main" >hi</div></html>'
 
 
+def test_parse_with_attribute_unquoted():
+    dom = HtmlParser("<html><div id=main>hi</div></html>", do_implicit=False).parse()
+    assert str(dom) == '<html><div id="main" >hi</div></html>'
+
+
+def test_parse_with_attribute_boolean():
+    dom = HtmlParser("<html><div itemscope>hi</div></html>", do_implicit=False).parse()
+    assert str(dom) == '<html><div itemscope="" >hi</div></html>'
+
+
+def test_parse_with_dquoted_angle():
+    dom = HtmlParser(
+        '<body><div onclick="1 < 2 === true ">Click me!</div>', do_implicit=False
+    ).parse()
+    assert str(dom) == '<body><div onclick="1 < 2 === true " >Click me!</div></body>'
+
+
 def test_parse_with_implicit_html():
     dom = HtmlParser('<head></head><body><div id="main">hi</div></body>').parse()
     assert str(dom) == '<html><head></head><body><div id="main" >hi</div></body></html>'

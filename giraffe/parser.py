@@ -8,6 +8,10 @@ This code is based on Chapter 4 of
 """
 
 SOFT_HYPHEN = "\N{SOFT HYPHEN}"
+DOUBLE_QUOTE = '"'
+SINGLE_QUOTE = "'"
+
+WS = ("\n", "\r", "\t")
 
 SELF_CLOSING_TAGS = (
     "area",
@@ -97,6 +101,9 @@ class HtmlParser:
         # XXX: probably state machine would help here
         in_tag = False
         in_script = False
+        in_attribute = False
+        in_double = False
+        in_single = False
         consume = 0
 
         for i, c in enumerate(self.body):
@@ -104,19 +111,34 @@ class HtmlParser:
                 consume -= 1
                 continue
 
-            if (
-                c == "<"
-                and not in_script
-                or c == "<"
-                and in_script
-                and self.body[i : i + 9] == "</script>"
-            ):
+            if c == DOUBLE_QUOTE and in_tag and not in_double:
+                in_double = True
+                in_attribute = True
+                buffer += c
+            elif c == DOUBLE_QUOTE and in_double:
+                in_attribute = False
+                in_double = False
+                buffer += c
+            elif c == SINGLE_QUOTE and in_tag and not in_single:
+                in_attribute = True
+                in_single = True
+                buffer += c
+            elif c == SINGLE_QUOTE and in_single:
+                in_attribute = False
+                in_single = False
+                buffer += c
+            elif c == "<" and not in_script and not in_attribute:
+                in_tag = True
+                if buffer:
+                    self.add_text(buffer)
+                buffer = ""
+            elif c == "<" and in_script and self.body[i : i + 9] == "</script>":
                 in_tag = True
                 in_script = False
                 if buffer:
                     self.add_text(buffer)
                 buffer = ""
-            elif c == ">" and not in_script:
+            elif c == ">" and not in_script and not in_attribute:
                 in_tag = False
                 if buffer == "script":
                     in_script = True
@@ -189,17 +211,62 @@ class HtmlParser:
                 self.in_script = True
 
     def get_attributes(self, text: str):
-        parts = text.split()
+        parts = text.split(" ")
         tag = parts[0].casefold()
+
+        buffer = ""
+        key = ""
+        in_value = False
+        in_single = False
+        in_double = False
+
         attributes = {}
-        for attrpair in parts[1:]:
-            if "=" in attrpair:
-                key, value = attrpair.split("=", 1)
-                if len(value) > 2 and value[0] in ["'", '"']:
-                    value = value[1:-1]
-                attributes[key.casefold()] = value
+
+        for c in text[len(tag) :]:
+            if c == " " and not in_value and buffer:
+                attributes[buffer.casefold()] = ""
+                buffer = ""
+            elif c in WS and not in_value and not in_single and not in_double:
+                continue
+            elif (c == " " or c in WS) and (in_single or in_double):
+                buffer += c
+            elif c == " " and in_value and not in_single and not in_double:
+                attributes[key.casefold()] = buffer
+                buffer = ""
+                key = ""
+                in_value = False
+            elif c == "=" and not in_value:
+                key = buffer
+                buffer = ""
+                in_value = True
+            elif c == SINGLE_QUOTE and in_value and not in_single:
+                in_single = True
+            elif c == SINGLE_QUOTE and in_value and in_single:
+                in_single = False
+            elif c == DOUBLE_QUOTE and in_value and not in_double:
+                in_double = True
+            elif c == DOUBLE_QUOTE and in_value and in_double:
+                in_double = False
+            elif c == ' ':
+                continue
             else:
-                attributes[attrpair.casefold()] = ""
+                buffer += c
+        
+        if not in_value and buffer:
+            attributes[buffer.casefold()] = ''
+        elif in_value and buffer:
+            attributes[key.casefold()] = buffer
+
+        # tag = parts[0].casefold()
+        # attributes = {}
+        # for attrpair in parts[1:]:
+        #     if "=" in attrpair:
+        #         key, value = attrpair.split("=", 1)
+        #         if len(value) > 2 and value[0] in (SINGLE_QUOTE, DOUBLE_QUOTE):
+        #             value = value[1:-1]
+        #         attributes[key.casefold()] = value
+        #     else:
+        #         attributes[attrpair.casefold()] = ""
         return tag, attributes
 
     def finish(self):
