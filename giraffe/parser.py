@@ -257,16 +257,6 @@ class HtmlParser:
         elif in_value and buffer:
             attributes[key.casefold()] = buffer
 
-        # tag = parts[0].casefold()
-        # attributes = {}
-        # for attrpair in parts[1:]:
-        #     if "=" in attrpair:
-        #         key, value = attrpair.split("=", 1)
-        #         if len(value) > 2 and value[0] in (SINGLE_QUOTE, DOUBLE_QUOTE):
-        #             value = value[1:-1]
-        #         attributes[key.casefold()] = value
-        #     else:
-        #         attributes[attrpair.casefold()] = ""
         return tag, attributes
 
     def finish(self):
