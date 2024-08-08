@@ -5,7 +5,7 @@ import tkinter.font
 from tkinter import BOTH
 from typing import List
 
-from giraffe.layout import VSTEP, DisplayUnit, DocumentLayout, lineheight
+from giraffe.layout import VSTEP, DisplayUnit, DocumentLayout, lineheight, paint_tree
 from giraffe.net import ABOUT_BLANK, URL
 from giraffe.parser import HtmlParser, Node
 
@@ -55,12 +55,17 @@ class Browser(object):
         body = url.request()
         self.location = url
         self.nodes = HtmlParser(body).parse(url.is_viewsource)
-        # display_list is standard browser/gui (?) terminology
-        self.document = DocumentLayout(self.nodes, self.width)
-        self.display_list = self.document.layout()
+        self._build_display_list()
         # TODO add logging
         # [print(du) for du in self.display_list]
         self.draw()
+
+    def _build_display_list(self):
+        self.document = DocumentLayout(self.nodes, self.width)
+        self.document.layout()
+        # display_list is standard browser/gui (?) terminology
+        self.display_list = []
+        paint_tree(self.document, self.display_list)
 
     def draw(self):
         self.canvas.delete("all")
@@ -95,9 +100,7 @@ class Browser(object):
     def configure(self, e):
         self.width = e.width
         self.height = e.height
-        self.document = DocumentLayout(self.nodes, self.width)
-        self.display_list = self.document.layout()
-
+        self._build_display_list()
         self.draw()
 
     def scrolldown(self, _e):

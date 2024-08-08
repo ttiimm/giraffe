@@ -13,6 +13,8 @@ These test help verify the content and exercises for Chapter 2 of
 [Web Browser Engineering](https://browser.engineering/graphics.html).
 """
 
+# TODO: work on more tests for CH2
+
 
 # TODO: record request for verification?
 # XXX: avoid copy pasta

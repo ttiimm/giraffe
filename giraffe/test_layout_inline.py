@@ -78,7 +78,7 @@ def test_center(_setup_tkinter):
     display_list = root.children[0].display_list
     first = display_list[0]
     assert first.word == "hi"
-    assert first.cursor_x == 48
+    assert first.cursor_x == 42
 
 
 def test_sup(_setup_tkinter):

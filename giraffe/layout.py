@@ -1,9 +1,10 @@
+from enum import Enum
 import math
 import tkinter.font
 from dataclasses import dataclass
 from typing import List, Literal
 
-from giraffe.parser import SOFT_HYPHEN, Node, Text
+from giraffe.parser import SOFT_HYPHEN, Element, Node, Text
 
 """The layout code used by the browser.
 
@@ -42,17 +43,66 @@ class DisplayUnit:
 
 
 class DocumentLayout:
-    def __init__(self, node, width):
+    def __init__(self, node, width: int):
         self.node = node
         self.parent = None
         self.children = []
-        self.width = width
 
-    def layout(self) -> List[DisplayUnit]:
-        child = BlockLayout(self.node, self, None, self.width)
+        self.x = HSTEP
+        self.y = VSTEP
+        self.width = width - 2*HSTEP
+        self.height = None
+
+    def layout(self):
+        child = BlockLayout(self.node, self, None)
         self.children.append(child)
         child.layout()
-        return child.display_list
+        self.height = child.height
+    
+    def paint(self) -> List[DisplayUnit]:
+        return []
+
+
+LayoutMode = Enum("LayoutMode", ["INLINE", "BLOCK"])
+BLOCK_ELEMENTS = [
+    "html",
+    "body",
+    "article",
+    "section",
+    "nav",
+    "aside",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "hgroup",
+    "header",
+    "footer",
+    "address",
+    "p",
+    "hr",
+    "pre",
+    "blockquote",
+    "ol",
+    "ul",
+    "menu",
+    "li",
+    "dl",
+    "dt",
+    "dd",
+    "figure",
+    "figcaption",
+    "main",
+    "div",
+    "table",
+    "form",
+    "fieldset",
+    "legend",
+    "details",
+    "summary",
+]
 
 
 class BlockLayout(object):
@@ -60,31 +110,77 @@ class BlockLayout(object):
         self,
         node: Node,
         parent: "DocumentLayout | BlockLayout",
-        previous: Node | None,
-        width: int,
+        previous: "BlockLayout | None",
     ):
         self.line: List[LineUnit] = []
         self.display_list: List[DisplayUnit] = []
-        self.cursor_x = HSTEP
-        self.cursor_y = VSTEP
-        self.is_bold = False
-        self.is_italic = False
-        self.is_centering = False
-        self.is_sup = False
-        self.is_abbr = False
-        self.is_pre = False
-        self.family: str | None = None
-        self.width = width
-        self.size = 14
+
+        self.x = None
+        self.y = None
+        self.width = None
+        self.height = None
 
         self.node = node
         self.parent = parent
         self.previous = previous
         self.children = []
 
+    def paint(self):
+        return self.display_list
+
     def layout(self):
-        self.recurse(self.node)
-        self.flush()
+        mode = self.layout_mode()
+        self.x = self.parent.x
+        self.width = self.parent.width
+
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            self.y = self.parent.y
+
+        if mode == LayoutMode.BLOCK:
+            # Reads from HTML tree and writes to the layout tree.
+            previous = None
+            for child in self.node.children:
+                next = BlockLayout(child, self, previous)
+                self.children.append(next)
+                previous = next
+        else:
+            self.cursor_x = 0
+            self.cursor_y = 0
+            self.is_bold = False
+            self.is_italic = False
+            self.is_centering = False
+            self.is_sup = False
+            self.is_abbr = False
+            self.is_pre = False
+            self.family: str | None = None
+            self.size = 14
+            self.recurse(self.node)
+            self.flush()
+
+        for child in self.children:
+            child.layout()
+        
+        if mode == LayoutMode.BLOCK:
+            self.height = sum([child.height for child in self.children])
+        else:
+            self.height = self.cursor_y
+
+    def layout_mode(self) -> LayoutMode:
+        if isinstance(self.node, Text):
+            return LayoutMode.INLINE
+        elif any(
+            [
+                isinstance(child, Element) and child.tag in BLOCK_ELEMENTS
+                for child in self.node.children
+            ]
+        ):
+            return LayoutMode.BLOCK
+        elif self.node.children:
+            return LayoutMode.INLINE
+        else:
+            return LayoutMode.BLOCK
 
     def recurse(self, tree):
         if isinstance(tree, Text) and self.is_pre:
@@ -200,7 +296,7 @@ class BlockLayout(object):
     def _is_overflowing(self, word: str) -> bool:
         font = get_font(self.family, self.size, self.is_bold, self.is_italic)
         word_len = font.measure(word)
-        return self.cursor_x + word_len > self.width - HSTEP
+        return self.cursor_x + word_len > self.width
 
     def flush(self):
         if not self.line:
@@ -208,20 +304,20 @@ class BlockLayout(object):
         metrics = [lu.style.font.metrics() for lu in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
         baseline = self.cursor_y + 1.25 * max_ascent
-        remaining = self.width - self.cursor_x  # assumes cursor_x is width of line
+        remaining = self.width - self.cursor_x
         centering_offset = math.floor(remaining / 2.0)
 
         for lu in self.line:
-            x = lu.cursor_x
+            x = self.x + lu.cursor_x
             if self.is_centering:
-                x = lu.cursor_x + centering_offset
-            y = baseline - lu.style.font.metrics("ascent")
+                x = self.x + lu.cursor_x + centering_offset
+            y = self.y + baseline - lu.style.font.metrics("ascent")
             if lu.style.valignment == "Top":
-                y = baseline - max_ascent
+                y = self.y + baseline - max_ascent
             self.display_list.append(DisplayUnit(x, y, lu.word, lu.style.font))
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.25 * max_descent
-        self.cursor_x = HSTEP
+        self.cursor_x = 0
         self.line = []
 
 
@@ -241,3 +337,9 @@ def get_font(family, size, is_bold, is_italic):
         label = tkinter.Label(font=font)
         FONTS[key] = (font, label)
     return FONTS[key][0]
+
+
+def paint_tree(layout: DocumentLayout | BlockLayout, display_list):
+    display_list.extend(layout.paint())
+    for child in layout.children:
+        paint_tree(child, display_list)
