@@ -41,8 +41,28 @@ class DisplayUnit:
     font: tkinter.font.Font
 
 
-class Layout(object):
-    def __init__(self, dom: Node, width: int):
+class DocumentLayout:
+    def __init__(self, node, width):
+        self.node = node
+        self.parent = None
+        self.children = []
+        self.width = width
+
+    def layout(self) -> List[DisplayUnit]:
+        child = BlockLayout(self.node, self, None, self.width)
+        self.children.append(child)
+        child.layout()
+        return child.display_list
+
+
+class BlockLayout(object):
+    def __init__(
+        self,
+        node: Node,
+        parent: "DocumentLayout | BlockLayout",
+        previous: Node | None,
+        width: int,
+    ):
         self.line: List[LineUnit] = []
         self.display_list: List[DisplayUnit] = []
         self.cursor_x = HSTEP
@@ -57,7 +77,13 @@ class Layout(object):
         self.width = width
         self.size = 14
 
-        self.recurse(dom)
+        self.node = node
+        self.parent = parent
+        self.previous = previous
+        self.children = []
+
+    def layout(self):
+        self.recurse(self.node)
         self.flush()
 
     def recurse(self, tree):

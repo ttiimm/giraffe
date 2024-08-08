@@ -3,8 +3,9 @@ import sys
 import tkinter
 import tkinter.font
 from tkinter import BOTH
+from typing import List
 
-from giraffe.layout import VSTEP, Layout, lineheight
+from giraffe.layout import VSTEP, DisplayUnit, DocumentLayout, lineheight
 from giraffe.net import ABOUT_BLANK, URL
 from giraffe.parser import HtmlParser, Node
 
@@ -35,7 +36,7 @@ class Browser(object):
         self.canvas = tkinter.Canvas(self.window, width=self.width, height=self.height)
         self.canvas.pack(fill=BOTH, expand=DO_EXPAND)
         self.scroll = 0
-        self.display_list = []
+        self.display_list: List[DisplayUnit] = []
         self.nodes: Node = HtmlParser(ABOUT_BLANK).parse()
         self.location = ""
         self.window.bind(sequence="<Down>", func=self.scrolldown)
@@ -55,7 +56,8 @@ class Browser(object):
         self.location = url
         self.nodes = HtmlParser(body).parse(url.is_viewsource)
         # display_list is standard browser/gui (?) terminology
-        self.display_list = Layout(self.nodes, self.width).display_list
+        self.document = DocumentLayout(self.nodes, self.width)
+        self.display_list = self.document.layout()
         # TODO add logging
         # [print(du) for du in self.display_list]
         self.draw()
@@ -93,9 +95,9 @@ class Browser(object):
     def configure(self, e):
         self.width = e.width
         self.height = e.height
-        self.display_list = Layout(
-            self.nodes, self.width - SCROLLBAR_WIDTH
-        ).display_list
+        self.document = DocumentLayout(self.nodes, self.width)
+        self.display_list = self.document.layout()
+
         self.draw()
 
     def scrolldown(self, _e):

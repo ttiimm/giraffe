@@ -3,7 +3,7 @@ from typing import List
 
 import pytest
 
-from giraffe.layout import Layout
+from giraffe.layout import DocumentLayout
 from giraffe.parser import Node, Element, Text
 
 
@@ -50,7 +50,9 @@ def _setup_tkinter():
 
 def test_layout(_setup_tkinter):
     nodes = Text("hi mom")
-    display_list = Layout(nodes, WIDTH).display_list
+    root = DocumentLayout(nodes, WIDTH)
+    root.layout()
+    display_list = root.children[0].display_list
     assert display_list[0].word == "hi"
     assert display_list[1].word == "mom"
     assert display_list[0].cursor_y == 21.5
@@ -59,8 +61,10 @@ def test_layout(_setup_tkinter):
 
 
 def test_layout_wraps(_setup_tkinter):
-    node = Text(LOREM_IPSUM)
-    display_list = Layout(node, WIDTH).display_list
+    nodes = Text(LOREM_IPSUM)
+    root = DocumentLayout(nodes, WIDTH)
+    root.layout()
+    display_list = root.children[0].display_list
     assert display_list[0].word == "Lorem"
     assert display_list[-1].word == "laborum."
     assert display_list[0].cursor_y < display_list[-1].cursor_y
@@ -69,7 +73,9 @@ def test_layout_wraps(_setup_tkinter):
 def test_center(_setup_tkinter):
     width = 100
     nodes = treeify(Element("h1", attributes={"class": '"title"'}), Text("hi"))
-    display_list = Layout(nodes, width).display_list
+    root = DocumentLayout(nodes, width)
+    root.layout()
+    display_list = root.children[0].display_list
     first = display_list[0]
     assert first.word == "hi"
     assert first.cursor_x == 48
@@ -80,7 +86,9 @@ def test_sup(_setup_tkinter):
     sup_tag = Element("sup")
     nodes = treeify(Element("div"), [Text("hey"), sup_tag])
     treeify(sup_tag, Text("guy"))
-    display_list = Layout(nodes, width).display_list
+    root = DocumentLayout(nodes, width)
+    root.layout()
+    display_list = root.children[0].display_list
     first, second = display_list[0], display_list[1]
     assert first.word == "hey"
     assert second.word == "guy"
@@ -91,7 +99,9 @@ def test_sup(_setup_tkinter):
 def test_soft_hyphens(_setup_tkinter):
     width = 100
     nodes = Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidocious")
-    display_list = Layout(nodes, width).display_list
+    root = DocumentLayout(nodes, width)
+    root.layout()
+    display_list = root.children[0].display_list
     assert len(display_list) == 2
     assert display_list[0].word[-1] == "\N{SOFT HYPHEN}"
     assert display_list[0].cursor_y < display_list[1].cursor_y
@@ -100,7 +110,9 @@ def test_soft_hyphens(_setup_tkinter):
 def test_soft_hyphens_with_multiple(_setup_tkinter):
     width = 233
     nodes = Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidociou\N{SOFT HYPHEN}s")
-    display_list = Layout(nodes, width).display_list
+    root = DocumentLayout(nodes, width)
+    root.layout()
+    display_list = root.children[0].display_list
     assert len(display_list) == 2
     assert display_list[0].word[-1] == "\N{SOFT HYPHEN}"
     assert display_list[1].word == "s"
@@ -110,7 +122,9 @@ def test_soft_hyphens_with_multiple(_setup_tkinter):
 def test_small_caps(_setup_tkinter):
     width = 100
     nodes = treeify(Element("abbr"), Text("like this"))
-    display_list = Layout(nodes, width).display_list
+    root = DocumentLayout(nodes, width)
+    root.layout()
+    display_list = root.children[0].display_list
     first = display_list[0]
     second = display_list[1]
     font_conf = first.font.config() or {"weight": None}
@@ -124,16 +138,20 @@ def test_small_caps(_setup_tkinter):
 def test_preformated(_setup_tkinter):
     width = 100
     nodes = treeify(Element("pre"), APOLLINAIRE)
-    display_list = Layout(nodes, width).display_list
+    root = DocumentLayout(nodes, width)
+    root.layout()
+    display_list = root.children[0].display_list
     assert len(display_list) == 17
 
 
 def test_preformated_bold(_setup_tkinter):
     width = 100
     b_tag = Element("b")
-    node = treeify(Element("pre"), [Text("    hello"), b_tag])
+    nodes = treeify(Element("pre"), [Text("    hello"), b_tag])
     treeify(b_tag, Text("world"))
-    display_list = Layout(node, width).display_list
+    root = DocumentLayout(nodes, width)
+    root.layout()
+    display_list = root.children[0].display_list
     assert display_list[0].word == "    hello"
     assert display_list[1].word == "world"
     font_conf = display_list[1].font.config() or {"weight": None}
