@@ -162,7 +162,7 @@ class BlockLayout(object):
 
         if isinstance(self.node, Element) and self.node.tag == "pre":
             x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(self.x, self.y, x2, y2, "gray")
+            rect = DrawRect(left=self.x, top=self.y, right=x2, bottom=y2, color="gray")
             cmds.append(rect)
 
         if self.layout_mode() == LayoutMode.INLINE:
