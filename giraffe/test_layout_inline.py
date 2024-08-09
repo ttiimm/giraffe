@@ -53,11 +53,11 @@ def test_layout(_setup_tkinter):
     root = DocumentLayout(nodes, WIDTH)
     root.layout()
     display_list = root.children[0].display_list
-    assert display_list[0].word == "hi"
-    assert display_list[1].word == "mom"
-    assert display_list[0].cursor_y == 21.5
-    assert display_list[1].cursor_y == 21.5
-    assert display_list[0].cursor_x < display_list[1].cursor_x
+    assert display_list[0].text == "hi"
+    assert display_list[1].text == "mom"
+    assert display_list[0].top == 21.5
+    assert display_list[1].top == 21.5
+    assert display_list[0].left < display_list[1].left
 
 
 def test_layout_wraps(_setup_tkinter):
@@ -65,9 +65,9 @@ def test_layout_wraps(_setup_tkinter):
     root = DocumentLayout(nodes, WIDTH)
     root.layout()
     display_list = root.children[0].display_list
-    assert display_list[0].word == "Lorem"
-    assert display_list[-1].word == "laborum."
-    assert display_list[0].cursor_y < display_list[-1].cursor_y
+    assert display_list[0].text == "Lorem"
+    assert display_list[-1].text == "laborum."
+    assert display_list[0].top < display_list[-1].top
 
 
 def test_center(_setup_tkinter):
@@ -77,8 +77,8 @@ def test_center(_setup_tkinter):
     root.layout()
     display_list = root.children[0].display_list
     first = display_list[0]
-    assert first.word == "hi"
-    assert first.cursor_x == 42
+    assert first.text == "hi"
+    assert first.left == 42
 
 
 def test_sup(_setup_tkinter):
@@ -90,9 +90,9 @@ def test_sup(_setup_tkinter):
     root.layout()
     display_list = root.children[0].display_list
     first, second = display_list[0], display_list[1]
-    assert first.word == "hey"
-    assert second.word == "guy"
-    assert first.cursor_y == second.cursor_y
+    assert first.text == "hey"
+    assert second.text == "guy"
+    assert first.top == second.top
     assert first.font["size"] != second.font["size"]
 
 
@@ -103,8 +103,8 @@ def test_soft_hyphens(_setup_tkinter):
     root.layout()
     display_list = root.children[0].display_list
     assert len(display_list) == 2
-    assert display_list[0].word[-1] == "\N{SOFT HYPHEN}"
-    assert display_list[0].cursor_y < display_list[1].cursor_y
+    assert display_list[0].text[-1] == "\N{SOFT HYPHEN}"
+    assert display_list[0].top < display_list[1].top
 
 
 def test_soft_hyphens_with_multiple(_setup_tkinter):
@@ -114,9 +114,9 @@ def test_soft_hyphens_with_multiple(_setup_tkinter):
     root.layout()
     display_list = root.children[0].display_list
     assert len(display_list) == 2
-    assert display_list[0].word[-1] == "\N{SOFT HYPHEN}"
-    assert display_list[1].word == "s"
-    assert display_list[0].cursor_y < display_list[1].cursor_y
+    assert display_list[0].text[-1] == "\N{SOFT HYPHEN}"
+    assert display_list[1].text == "s"
+    assert display_list[0].top < display_list[1].top
 
 
 def test_small_caps(_setup_tkinter):
@@ -128,9 +128,9 @@ def test_small_caps(_setup_tkinter):
     first = display_list[0]
     second = display_list[1]
     font_conf = first.font.config() or {"weight": None}
-    assert first.word == "LIKE"
+    assert first.text == "LIKE"
     assert font_conf["weight"] == "bold"
-    assert second.word == "THIS"
+    assert second.text == "THIS"
     font_conf = second.font.config() or {"weight": None}
     assert font_conf["weight"] == "bold"
 
@@ -152,8 +152,8 @@ def test_preformated_bold(_setup_tkinter):
     root = DocumentLayout(nodes, width)
     root.layout()
     display_list = root.children[0].display_list
-    assert display_list[0].word == "    hello"
-    assert display_list[1].word == "world"
+    assert display_list[0].text == "    hello"
+    assert display_list[1].text == "world"
     font_conf = display_list[1].font.config() or {"weight": None}
     assert font_conf["weight"] == "bold"
 

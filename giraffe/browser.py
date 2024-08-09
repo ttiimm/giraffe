@@ -5,7 +5,7 @@ import tkinter.font
 from tkinter import BOTH
 from typing import List
 
-from giraffe.layout import VSTEP, DisplayUnit, DocumentLayout, lineheight, paint_tree
+from giraffe.layout import VSTEP, Command, DocumentLayout, paint_tree
 from giraffe.net import ABOUT_BLANK, URL
 from giraffe.parser import HtmlParser, Node
 
@@ -36,7 +36,7 @@ class Browser(object):
         self.canvas = tkinter.Canvas(self.window, width=self.width, height=self.height)
         self.canvas.pack(fill=BOTH, expand=DO_EXPAND)
         self.scroll = 0
-        self.display_list: List[DisplayUnit] = []
+        self.display_list: List[Command] = []
         self.nodes: Node = HtmlParser(ABOUT_BLANK).parse()
         self.location = ""
         self.window.bind(sequence="<Down>", func=self.scrolldown)
@@ -73,20 +73,20 @@ class Browser(object):
         self._display_scrollbar()
 
     def _display_text(self):
-        for du in self.display_list:
-            x, y, c, font = (du.cursor_x, du.cursor_y, du.word, du.font)
-            if y + lineheight(font) < self.scroll:
+        for cmd in self.display_list:
+            if cmd.top > self.scroll + self.height:
                 continue
-            if y > self.scroll + self.height:
+            if cmd.bottom < self.scroll:
                 continue
-            self.canvas.create_text(x, y - self.scroll, text=c, font=font, anchor="nw")
+
+            cmd.execute(self.scroll, self.canvas)
 
     def _display_scrollbar(self):
         if not self.display_list:
             return
 
-        first_y = self.display_list[0].cursor_y
-        last_y = self.display_list[-1].cursor_y
+        first_y = self.display_list[0].top
+        last_y = self.display_list[-1].bottom
         if first_y < self.scroll or last_y > self.scroll + self.height:
             total_screens = math.ceil(last_y / self.height)
             scrollbar_len = self.height / total_screens
@@ -115,8 +115,7 @@ class Browser(object):
 
     def _handle_scroll(self, delta):
         lastline = self.display_list[-1]
-        vstep = lineheight(lastline.font)
-        maxline = lastline.cursor_y - self.height + vstep + VSTEP
+        maxline = lastline.bottom - self.height - VSTEP
         # clamp scroll such that scroll doesn't go beyond the body
         self.scroll = max(0, min(self.scroll + delta, maxline))
         self.draw()

@@ -34,26 +34,44 @@ class LineUnit:
     style: Styling
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Command:
-    pass
+    left: int
+    top: float
+    bottom: float | None = None
+
+    def execute(self, _scroll, _canvas):
+        pass
 
 
 @dataclass
 class DrawText(Command):
-    left_x: int
-    top_y: float
     text: str
     font: tkinter.font.Font
+
+    def __post_init__(self):
+        self.bottom = self.top + self.font.metrics("linespace")
+
+    def execute(self, scroll, canvas):
+        canvas.create_text(
+            self.left, self.top - scroll, text=self.text, font=self.font, anchor="nw"
+        )
 
 
 @dataclass
 class DrawRect(Command):
-    left_x: int
-    top_y: float
-    right_x: int
-    bottom_y: int
+    right: int
     color: str
+
+    def execute(self, scroll, canvas):
+        canvas.create_rectangle(
+            self.left,
+            self.top - scroll,
+            self.right,
+            self.bottom - scroll,
+            width=0,
+            fill=self.color,
+        )
 
 
 class DocumentLayout:
@@ -129,8 +147,8 @@ class BlockLayout(object):
         self.line: List[LineUnit] = []
         self.display_list: List[Command] = []
 
-        self.x = None
-        self.y = None
+        self.x: int | None = None
+        self.y: int | None = None
         self.width = None
         self.height = None
 
@@ -339,15 +357,13 @@ class BlockLayout(object):
             y = self.y + baseline - lu.style.font.metrics("ascent")
             if lu.style.valignment == "Top":
                 y = self.y + baseline - max_ascent
-            self.display_list.append(DrawText(x, y, lu.word, lu.style.font))
+            self.display_list.append(
+                DrawText(left=x, top=y, text=lu.word, font=lu.style.font)
+            )
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.25 * max_descent
         self.cursor_x = 0
         self.line = []
-
-
-def lineheight(font):
-    return font.metrics("linespace") * 1.25
 
 
 FONTS = {}
