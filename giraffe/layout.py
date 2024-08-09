@@ -8,8 +8,8 @@ from giraffe.parser import SOFT_HYPHEN, Element, Node, Text
 
 """The layout code used by the browser.
 
-This code is based on Chapter 3 of 
-[Web Browser Engineering](https://browser.engineering/text.html).
+This code is based on Chapter 3/5 of 
+[Web Browser Engineering](https://browser.engineering/).
 """
 
 
@@ -35,11 +35,25 @@ class LineUnit:
 
 
 @dataclass
-class DisplayUnit:
-    cursor_x: int
-    cursor_y: float
-    word: str
+class Command:
+    pass
+
+
+@dataclass
+class DrawText(Command):
+    left_x: int
+    top_y: float
+    text: str
     font: tkinter.font.Font
+
+
+@dataclass
+class DrawRect(Command):
+    left_x: int
+    top_y: float
+    right_x: int
+    bottom_y: int
+    color: str
 
 
 class DocumentLayout:
@@ -50,7 +64,7 @@ class DocumentLayout:
 
         self.x = HSTEP
         self.y = VSTEP
-        self.width = width - 2*HSTEP
+        self.width = width - 2 * HSTEP
         self.height = None
 
     def layout(self):
@@ -58,8 +72,8 @@ class DocumentLayout:
         self.children.append(child)
         child.layout()
         self.height = child.height
-    
-    def paint(self) -> List[DisplayUnit]:
+
+    def paint(self) -> List[Command]:
         return []
 
 
@@ -113,7 +127,7 @@ class BlockLayout(object):
         previous: "BlockLayout | None",
     ):
         self.line: List[LineUnit] = []
-        self.display_list: List[DisplayUnit] = []
+        self.display_list: List[Command] = []
 
         self.x = None
         self.y = None
@@ -125,8 +139,19 @@ class BlockLayout(object):
         self.previous = previous
         self.children = []
 
-    def paint(self):
-        return self.display_list
+    def paint(self) -> List[Command]:
+        cmds = []
+
+        if isinstance(self.node, Element) and self.node.tag == "pre":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(self.x, self.y, x2, y2, "gray")
+            cmds.append(rect)
+
+        if self.layout_mode() == LayoutMode.INLINE:
+            for du in self.display_list:
+                cmds.append(du)
+
+        return cmds
 
     def layout(self):
         mode = self.layout_mode()
@@ -161,7 +186,7 @@ class BlockLayout(object):
 
         for child in self.children:
             child.layout()
-        
+
         if mode == LayoutMode.BLOCK:
             self.height = sum([child.height for child in self.children])
         else:
@@ -314,7 +339,7 @@ class BlockLayout(object):
             y = self.y + baseline - lu.style.font.metrics("ascent")
             if lu.style.valignment == "Top":
                 y = self.y + baseline - max_ascent
-            self.display_list.append(DisplayUnit(x, y, lu.word, lu.style.font))
+            self.display_list.append(DrawText(x, y, lu.word, lu.style.font))
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.25 * max_descent
         self.cursor_x = 0

@@ -14,6 +14,7 @@ These test help verify the content and exercises for Chapter 2 of
 """
 
 # TODO: work on more tests for CH2
+# TODO: snapshot tests? 
 
 
 # TODO: record request for verification?
