@@ -8,6 +8,7 @@ from typing import List
 from giraffe.layout import VSTEP, Command, DocumentLayout, paint_tree
 from giraffe.net import ABOUT_BLANK, URL
 from giraffe.parser import HtmlParser, Node
+from giraffe.styling import style
 
 """An implementation of browser gui code for displaying web pages.
 
@@ -61,6 +62,7 @@ class Browser(object):
         self.draw()
 
     def _build_display_list(self):
+        style(self.nodes)
         self.document = DocumentLayout(self.nodes, self.width)
         self.document.layout()
         # display_list is standard browser/gui (?) terminology

@@ -64,6 +64,7 @@ class Text(Node):
 class Element(Node):
     tag: str
     attributes: Dict[str, str] = field(default_factory=dict)
+    style: Dict[str, str] = field(default_factory=dict)
 
     def __str__(self) -> str:
         child_strs = ""

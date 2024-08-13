@@ -159,12 +159,12 @@ class BlockLayout(object):
 
     def paint(self) -> List[Command]:
         cmds = []
-
-        if isinstance(self.node, Element) and self.node.tag == "pre":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(left=self.x, top=self.y, right=x2, bottom=y2, color="gray")
-            cmds.append(rect)
-
+        if isinstance(self.node, Element):
+            bgcolor = self.node.style.get("background-color", "transparent")
+            if bgcolor != "transparent":
+                x2, y2 = self.x + self.width, self.y + self.height
+                rect = DrawRect(left=self.x, top=self.y, right=x2, bottom=y2, color=bgcolor)
+                cmds.append(rect)
         if self.layout_mode() == LayoutMode.INLINE:
             for du in self.display_list:
                 cmds.append(du)

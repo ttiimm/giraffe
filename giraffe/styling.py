@@ -5,6 +5,9 @@ This code is based on Chapter 6 of
 """
 
 
+from giraffe.parser import Element, Node
+
+
 class ParseError(Exception):
     def __init__(self, error: str, position: int | None = None):
         super().__init__(error)
@@ -79,3 +82,12 @@ class CSSParser:
     def whitespace(self):
         while self.i < len(self.s) and self.s[self.i].isspace():
             self.i += 1
+
+
+def style(node: Node):
+    if isinstance(node, Element) and "style" in node.attributes:
+        pairs = CSSParser(node.attributes["style"]).body()
+        for property, value in pairs.items():
+            node.style[property] = value
+    for child in node.children:
+        style(child)

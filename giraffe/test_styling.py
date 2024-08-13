@@ -1,5 +1,6 @@
 import pytest
-from giraffe.styling import CSSParser, ParseError
+from giraffe.parser import Element, Text
+from giraffe.styling import CSSParser, ParseError, style
 
 """Test cases for the browser's CSS parser.
 
@@ -62,3 +63,24 @@ def test_body_when_strict():
 def test_body_when_not_strict():
     parser = CSSParser("background-color:lightblue; hi", strict=False)
     assert parser.body() == {"background-color": "lightblue"}
+
+
+def test_style_with_text():
+    text = Text("hi")
+    style(text)
+    assert text
+
+
+def test_style_with_element():
+    el = Element("div", attributes={"style": "background-color:lightblue;"})
+    style(el)
+    assert "background-color" in el.style
+
+
+def test_style_with_element_children():
+    parent = Element("body")
+    el = Element("div", attributes={"style": "background-color:lightblue;"})
+    el.parent = parent
+    parent.children.append(el)
+    style(parent)
+    assert "background-color" in el.style
