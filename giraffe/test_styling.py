@@ -1,6 +1,12 @@
 import pytest
 from giraffe.parser import Element, Text
-from giraffe.styling import CSSParser, ParseError, style
+from giraffe.styling import (
+    CSSParser,
+    DescendantSelector,
+    ParseError,
+    TagSelector,
+    style,
+)
 
 """Test cases for the browser's CSS parser.
 
@@ -84,3 +90,48 @@ def test_style_with_element_children():
     parent.children.append(el)
     style(parent)
     assert "background-color" in el.style
+
+
+def test_tag_selector_matches():
+    selector = TagSelector("div")
+    div = Element("div")
+    assert selector.matches(div)
+
+
+def test_tag_selector_no_match():
+    selector = TagSelector("div")
+    p = Element("p")
+    assert not selector.matches(p)
+
+
+def test_descendant_selector_matches():
+    ancestor = TagSelector("body")
+    descendant = TagSelector("div")
+    selector = DescendantSelector(ancestor, descendant)
+
+    parent = Element("body")
+    el = Element("div", attributes={"style": "background-color:lightblue;"})
+    el.parent = parent
+    parent.children.append(el)
+    assert selector.matches(el)
+
+
+def test_descendant_selector_no_match():
+    ancestor = TagSelector("body")
+    descendant = TagSelector("div")
+    selector = DescendantSelector(ancestor, descendant)
+
+    parent = Element("body")
+    el = Element("p", attributes={"style": "background-color:lightblue;"})
+    el.parent = parent
+    parent.children.append(el)
+    assert not selector.matches(el)
+
+
+def test_parse():
+    book_css = """
+        html { font-size: 24px; line-height: 1.3; padding: 0.5ex; }
+        pre { font-size: 18px; overflow: auto; padding-left: 2ex; }
+    """
+    rules = CSSParser(book_css).parse()
+    assert len(rules) == 2

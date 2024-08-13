@@ -4,7 +4,6 @@ This code is based on Chapter 6 of
 [Web Browser Engineering](https://browser.engineering/styles.html).
 """
 
-
 from giraffe.parser import Element, Node
 
 
@@ -21,14 +20,47 @@ class ParseError(Exception):
 
 
 class CSSParser:
-    def __init__(self, s, strict=False):
+    def __init__(self, s: str, strict=False):
         self.s = s
         self.i = 0
         self.strict = strict
+    
+    def parse(self):
+        rules = []
+        while self.i < len(self.s):
+            try:
+                self.whitespace()
+                selector = self.selector()
+                self.literal("{")
+                self.whitespace()
+                body = self.body()
+                self.whitespace()
+                self.literal("}")
+                rules.append((selector, body))
+            except ParseError as e:
+                if self.strict:
+                    raise e
+                why = self.ignore_until(["}"])
+                if why == "}":
+                    self.literal("}")
+                    self.whitespace()
+                else:
+                    break
+        return rules
+
+    def selector(self):
+        out = TagSelector(self.word().casefold())
+        self.whitespace()
+        while self.i < len(self.s) and self.s[self.i] != "{":
+            tag = self.word()
+            descendant = TagSelector(tag.casefold())
+            out = DescendantSelector(out, descendant)
+            self.whitespace()
+        return out
 
     def body(self):
         pairs = {}
-        while self.i < len(self.s):
+        while self.i < len(self.s) and self.s[self.i] != "}":
             try:
                 prop, val = self.pair()
                 pairs[prop.casefold()] = val
@@ -39,7 +71,7 @@ class CSSParser:
                 if self.strict:
                     raise e
                 else:
-                    why = self.ignore_until([";"])
+                    why = self.ignore_until([";", "}"])
                     if why == ";":
                         self.literal(";")
                         self.whitespace()
@@ -82,6 +114,30 @@ class CSSParser:
     def whitespace(self):
         while self.i < len(self.s) and self.s[self.i].isspace():
             self.i += 1
+
+
+class TagSelector:
+    def __init__(self, tag):
+        self.tag = tag
+
+    def matches(self, node: Node):
+        return isinstance(node, Element) and self.tag == node.tag
+
+
+class DescendantSelector:
+    def __init__(
+        self, ancestor: "DescendantSelector | TagSelector", descendant: TagSelector
+    ):
+        self.ancestor = ancestor
+        self.descendant = descendant
+
+    def matches(self, node):
+        if not self.descendant.matches(node):
+            return False
+        while node.parent:
+            if self.ancestor.matches(node.parent):
+                return True
+        return False
 
 
 def style(node: Node):
