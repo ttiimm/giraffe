@@ -50,6 +50,7 @@ HEAD_TAGS = (
 class Node:
     parent: "Element | None" = None
     children: List["Text | Element"] = field(default_factory=list)
+    style: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -64,7 +65,6 @@ class Text(Node):
 class Element(Node):
     tag: str
     attributes: Dict[str, str] = field(default_factory=dict)
-    style: Dict[str, str] = field(default_factory=dict)
 
     def __str__(self) -> str:
         child_strs = ""
@@ -248,13 +248,13 @@ class HtmlParser:
                 in_double = True
             elif c == DOUBLE_QUOTE and in_value and in_double:
                 in_double = False
-            elif c == ' ':
+            elif c == " ":
                 continue
             else:
                 buffer += c
-        
+
         if not in_value and buffer:
-            attributes[buffer.casefold()] = ''
+            attributes[buffer.casefold()] = ""
         elif in_value and buffer:
             attributes[key.casefold()] = buffer
 

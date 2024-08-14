@@ -128,6 +128,20 @@ def test_descendant_selector_no_match():
     assert not selector.matches(el)
 
 
+def test_descendant_selector_with_grandparent():
+    ancestor = TagSelector("body")
+    descendant = TagSelector("p")
+    selector = DescendantSelector(ancestor, descendant)
+
+    grandparent = Element("body")
+    div = Element("div")
+    div.parent = grandparent
+    grandparent.children.append(div)
+    el = Element("p", attributes={"style": "background-color:lightblue;"})
+    el.parent = div
+    div.children.append(el)
+    assert selector.matches(el)
+
 def test_parse():
     book_css = """
         html { font-size: 24px; line-height: 1.3; padding: 0.5ex; }

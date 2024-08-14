@@ -197,3 +197,48 @@ def test_request_aboutblank():
 def test_url_with_aboutblank():
     url = URL("about:blank")
     assert url.scheme == Scheme.ABOUT
+
+
+def test_url_resolve_with_all_parts():
+    url = URL("http://browser.engineering/http.html")
+    css_url = url.resolve("http://browser.engineering/book.css")
+    assert css_url.scheme == Scheme.HTTP
+    assert css_url.host == "browser.engineering"
+    assert css_url.port == 80
+    assert css_url.path == "/book.css"
+
+
+def test_url_resolve_with_host_relative():
+    url = URL("http://browser.engineering/http.html")
+    css_url = url.resolve("/book.css")
+    assert css_url.scheme == Scheme.HTTP
+    assert css_url.host == "browser.engineering"
+    assert css_url.port == 80
+    assert css_url.path == "/book.css"
+
+
+def test_url_resolve_with_path_relative():
+    url = URL("http://browser.engineering/http.html")
+    css_url = url.resolve("book.css")
+    assert css_url.scheme == Scheme.HTTP
+    assert css_url.host == "browser.engineering"
+    assert css_url.port == 80
+    assert css_url.path == "/book.css"
+
+
+def test_url_resolve_with_scheme_relative():
+    url = URL("http://browser.engineering/http.html")
+    css_url = url.resolve("//browser.engineering/book.css")
+    assert css_url.scheme == Scheme.HTTP
+    assert css_url.host == "browser.engineering"
+    assert css_url.port == 80
+    assert css_url.path == "/book.css"
+
+
+def test_url_resolve_with_relative():
+    url = URL("http://browser.engineering/foo/http.html")
+    css_url = url.resolve("../book.css")
+    assert css_url.scheme == Scheme.HTTP
+    assert css_url.host == "browser.engineering"
+    assert css_url.port == 80
+    assert css_url.path == "/book.css"

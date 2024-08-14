@@ -4,6 +4,8 @@ This code is based on Chapter 6 of
 [Web Browser Engineering](https://browser.engineering/styles.html).
 """
 
+from dataclasses import dataclass
+from typing import List
 from giraffe.parser import Element, Node
 
 
@@ -19,12 +21,18 @@ class ParseError(Exception):
         return self.error
 
 
+@dataclass
+class Rule:
+    selector: "TagSelector | DescendantSelector"
+    body: dict[str, str]
+
+
 class CSSParser:
     def __init__(self, s: str, strict=False):
         self.s = s
         self.i = 0
         self.strict = strict
-    
+
     def parse(self):
         rules = []
         while self.i < len(self.s):
@@ -36,7 +44,7 @@ class CSSParser:
                 body = self.body()
                 self.whitespace()
                 self.literal("}")
-                rules.append((selector, body))
+                rules.append(Rule(selector, body))
             except ParseError as e:
                 if self.strict:
                     raise e
@@ -58,7 +66,7 @@ class CSSParser:
             self.whitespace()
         return out
 
-    def body(self):
+    def body(self) -> dict[str, str]:
         pairs = {}
         while self.i < len(self.s) and self.s[self.i] != "}":
             try:
@@ -137,13 +145,21 @@ class DescendantSelector:
         while node.parent:
             if self.ancestor.matches(node.parent):
                 return True
+            node = node.parent
         return False
 
 
-def style(node: Node):
+def style(node: Node, rules: List[Rule]):
+    for rule in rules:
+        if not rule.selector.matches(node):
+            continue
+        for property, value in rule.body.items():
+            node.style[property] = value
+
     if isinstance(node, Element) and "style" in node.attributes:
         pairs = CSSParser(node.attributes["style"]).body()
         for property, value in pairs.items():
             node.style[property] = value
+    
     for child in node.children:
-        style(child)
+        style(child, rules)

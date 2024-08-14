@@ -196,6 +196,28 @@ class URL(object):
             and response.headers["content-encoding"] == "gzip"
         )
 
+    def resolve(self, url: str) -> "URL":
+        if "://" in url:
+            return URL(url)
+        if not url.startswith("/"):
+            dir, _ = self.path.rsplit("/", 1)
+            while url.startswith("../"):
+                _, url = url.split("/", 1)
+                if "/" in dir:
+                    dir, _ = dir.rsplit("/", 1)
+            url = dir + "/" + url
+        if url.startswith("//"):
+            return URL(self.scheme.name.lower() + ":" + url)
+        else:
+            return URL(
+                self.scheme.name.lower()
+                + "://"
+                + self.host
+                + ":"
+                + str(self.port)
+                + url
+            )
+
 
 # XXX Move this into browser?
 def _handle_http(url: URL) -> Response:
