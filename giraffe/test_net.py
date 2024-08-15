@@ -104,6 +104,7 @@ def test_request(test_server):
     assert content == "<html>hi</html>"
 
 
+@pytest.mark.slow
 def test_request_headers():
     raw_url = "https://httpbin.org/headers"
     url = URL(raw_url)
@@ -112,6 +113,7 @@ def test_request_headers():
     assert '"User-Agent": "Giraffe"' in response
 
 
+@pytest.mark.slow
 def test_request_browserengineering():
     raw_url = "http://browser.engineering/http.html"
     url = URL(raw_url)
@@ -120,6 +122,7 @@ def test_request_browserengineering():
     assert "</html>" in response.body
 
 
+@pytest.mark.slow
 def test_request_redirect():
     raw_url = "http://browser.engineering/redirect"
     url = URL(raw_url)
@@ -127,6 +130,7 @@ def test_request_redirect():
     assert "200" == response.status
 
 
+@pytest.mark.slow
 def test_request_redirect2():
     raw_url = "http://browser.engineering/redirect2"
     url = URL(raw_url)
@@ -134,6 +138,7 @@ def test_request_redirect2():
     assert "200" == response.status
 
 
+@pytest.mark.slow
 def test_request_redirect3():
     raw_url = "http://browser.engineering/redirect3"
     url = URL(raw_url)
@@ -171,6 +176,7 @@ def test_view_source_scheme(test_server):
     assert url.is_viewsource
 
 
+@pytest.mark.slow
 def test_caching():
     url = URL("http://example.org/index.html")
     first = url.request_response()
@@ -178,6 +184,7 @@ def test_caching():
     assert first is second
 
 
+@pytest.mark.slow
 def test_caching_expires():
     url = URL("https://httpbin.org/cache/1")
     first = url.request_response()
