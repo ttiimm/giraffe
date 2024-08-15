@@ -6,7 +6,7 @@ This code is based on Chapter 6 of
 
 from dataclasses import dataclass
 from typing import List
-from giraffe.parser import Element, Node
+from giraffe.parser import INHERITED_PROPERTIES, Element, Node
 
 
 class ParseError(Exception):
@@ -25,6 +25,9 @@ class ParseError(Exception):
 class Rule:
     selector: "TagSelector | DescendantSelector"
     body: dict[str, str]
+
+    def cascade_priority(self):
+        return self.selector.priority
 
 
 class CSSParser:
@@ -127,6 +130,7 @@ class CSSParser:
 class TagSelector:
     def __init__(self, tag):
         self.tag = tag
+        self.priority = 1
 
     def matches(self, node: Node):
         return isinstance(node, Element) and self.tag == node.tag
@@ -138,6 +142,7 @@ class DescendantSelector:
     ):
         self.ancestor = ancestor
         self.descendant = descendant
+        self.priority = ancestor.priority + descendant.priority
 
     def matches(self, node):
         if not self.descendant.matches(node):
@@ -149,7 +154,19 @@ class DescendantSelector:
         return False
 
 
-def style(node: Node, rules: List[Rule]):
+DEFAULT_STYLE_SHEET = CSSParser(open("browser.css").read()).parse()
+
+
+def style(node: Node, rules: "None | List[Rule]" = None):
+    if rules is None:
+        rules = DEFAULT_STYLE_SHEET.copy()
+
+    for property, default_value in INHERITED_PROPERTIES.items():
+        if node.parent:
+            node.style[property] = node.parent.style[property]
+        else:
+            node.style[property] = default_value
+
     for rule in rules:
         if not rule.selector.matches(node):
             continue
@@ -160,6 +177,15 @@ def style(node: Node, rules: List[Rule]):
         pairs = CSSParser(node.attributes["style"]).body()
         for property, value in pairs.items():
             node.style[property] = value
-    
+
+    if node.style["font-size"].endswith("%"):
+        if node.parent:
+            parent_font_size = node.parent.style["font-size"]
+        else:
+            parent_font_size = INHERITED_PROPERTIES["font-size"]
+        node_pct = float(node.style["font-size"][:-1]) / 100
+        parent_px = float(parent_font_size[:-2])
+        node.style["font-size"] = str(node_pct * parent_px) + "px"
+
     for child in node.children:
         style(child, rules)

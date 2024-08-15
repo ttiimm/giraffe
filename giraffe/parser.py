@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Self, TypeVar
 
+
 """The lexing and parsing code used by the browser.
 
 This code is based on Chapter 4 of 
@@ -46,11 +47,23 @@ HEAD_TAGS = (
 )
 
 
+INHERITED_PROPERTIES = {
+    "font-size": "16px",
+    "font-style": "normal",
+    "font-weight": "normal",
+    "color": "black",
+}
+
+
+def init_style():
+    return INHERITED_PROPERTIES.copy()
+
+
 @dataclass(kw_only=True)
 class Node:
     parent: "Element | None" = None
     children: List["Text | Element"] = field(default_factory=list)
-    style: Dict[str, str] = field(default_factory=dict)
+    style: Dict[str, str] = field(default_factory=init_style)
 
 
 @dataclass

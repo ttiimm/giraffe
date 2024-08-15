@@ -142,6 +142,7 @@ def test_descendant_selector_with_grandparent():
     div.children.append(el)
     assert selector.matches(el)
 
+
 def test_parse():
     book_css = """
         html { font-size: 24px; line-height: 1.3; padding: 0.5ex; }

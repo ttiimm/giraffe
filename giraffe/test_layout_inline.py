@@ -5,6 +5,7 @@ import pytest
 
 from giraffe.layout import DocumentLayout
 from giraffe.parser import Node, Element, Text
+from giraffe.styling import INHERITED_PROPERTIES
 
 
 """Test cases for the browser's layout engine.
@@ -55,8 +56,8 @@ def test_layout(_setup_tkinter):
     display_list = root.children[0].display_list
     assert display_list[0].text == "hi"
     assert display_list[1].text == "mom"
-    assert display_list[0].top == 21.5
-    assert display_list[1].top == 21.5
+    assert display_list[0].top == 21.0
+    assert display_list[1].top == 21.0
     assert display_list[0].left < display_list[1].left
 
 

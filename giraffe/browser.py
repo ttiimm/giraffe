@@ -8,7 +8,7 @@ from typing import List
 from giraffe.layout import VSTEP, Command, DocumentLayout, paint_tree
 from giraffe.net import ABOUT_BLANK, URL
 from giraffe.parser import Element, HtmlParser, Node
-from giraffe.styling import CSSParser, style
+from giraffe.styling import DEFAULT_STYLE_SHEET, CSSParser, style
 
 """An implementation of browser gui code for displaying web pages.
 
@@ -25,9 +25,6 @@ SCROLLBAR_PAD = 4
 SCROLLBAR_COLOR = "cornflower blue"
 
 
-DEFAULT_STYLE_SHEET = CSSParser(open("browser.css").read()).parse()
-
-
 class FakeEvent:
     delta: int
 
@@ -37,7 +34,9 @@ class Browser(object):
         self.window = tkinter.Tk()
         self.width = WIDTH
         self.height = HEIGHT
-        self.canvas = tkinter.Canvas(self.window, width=self.width, height=self.height)
+        self.canvas = tkinter.Canvas(
+            self.window, width=self.width, height=self.height, bg="white"
+        )
         self.canvas.pack(fill=BOTH, expand=DO_EXPAND)
         self.scroll = 0
         self.display_list: List[Command] = []
@@ -76,6 +75,7 @@ class Browser(object):
             except:
                 continue
             self.rules.extend(CSSParser(body).parse())
+        self.rules = sorted(self.rules, key=lambda r: r.cascade_priority())
         self._build_display_list()
         # TODO add logging
         # [print(du) for du in self.display_list]

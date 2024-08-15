@@ -24,6 +24,7 @@ SLANT_ITALIC = "italic"
 @dataclass
 class Styling:
     font: tkinter.font.Font
+    color: str = "black"
     valignment: Literal["None", "Top"] = "None"
 
 
@@ -48,13 +49,19 @@ class Command:
 class DrawText(Command):
     text: str
     font: tkinter.font.Font
+    color: str
 
     def __post_init__(self):
         self.bottom = self.top + self.font.metrics("linespace")
 
-    def execute(self, scroll, canvas):
+    def execute(self, scroll, canvas: tkinter.Canvas):
         canvas.create_text(
-            self.left, self.top - scroll, text=self.text, font=self.font, anchor="nw"
+            self.left,
+            self.top - scroll,
+            text=self.text,
+            font=self.font,
+            anchor="nw",
+            fill=self.color,
         )
 
 
@@ -163,11 +170,13 @@ class BlockLayout(object):
             bgcolor = self.node.style.get("background-color", "transparent")
             if bgcolor != "transparent":
                 x2, y2 = self.x + self.width, self.y + self.height
-                rect = DrawRect(left=self.x, top=self.y, right=x2, bottom=y2, color=bgcolor)
+                rect = DrawRect(
+                    left=self.x, top=self.y, right=x2, bottom=y2, color=bgcolor
+                )
                 cmds.append(rect)
         if self.layout_mode() == LayoutMode.INLINE:
-            for du in self.display_list:
-                cmds.append(du)
+            for command in self.display_list:
+                cmds.append(command)
 
         return cmds
 
@@ -191,6 +200,7 @@ class BlockLayout(object):
         else:
             self.cursor_x = 0
             self.cursor_y = 0
+            # TODO remove the styling attributes
             self.is_bold = False
             self.is_italic = False
             self.is_centering = False
@@ -225,26 +235,26 @@ class BlockLayout(object):
         else:
             return LayoutMode.BLOCK
 
-    def recurse(self, tree):
-        if isinstance(tree, Text) and self.is_pre:
+    def recurse(self, node: Node):
+        if isinstance(node, Text) and self.is_pre:
             line = ""
-            for c in tree.text:
+            for c in node.text:
                 if c == "\n":
-                    self._handle_word(line)
+                    self._handle_text(node, line)
                     self.flush()
                     line = ""
                 else:
                     line += c
             if len(line) != 0:
-                self._handle_word(line)
-        elif isinstance(tree, Text):
-            for word in tree.text.split():
-                self._handle_word(word)
+                self._handle_text(node, line)
+        elif isinstance(node, Text):
+            for word in node.text.split():
+                self._handle_text(node, word)
         else:
-            self.open_tag(tree.tag)
-            for child in tree.children:
+            self.open_tag(node.tag)
+            for child in node.children:
                 self.recurse(child)
-            self.close_tag(tree.tag)
+            self.close_tag(node.tag)
 
     def open_tag(self, tag):
         if tag == "i":
@@ -295,9 +305,9 @@ class BlockLayout(object):
             self.is_pre = False
             self.family = None
 
-    def _handle_word(self, word):
+    def _handle_text(self, node: Node, word: str):
         if not self._is_overflowing(word) or SOFT_HYPHEN not in word:
-            self.word(word)
+            self.word(node, word)
             return
 
         # too long and contains a soft hyphen, try to split word on hyphen
@@ -305,7 +315,7 @@ class BlockLayout(object):
         hyph_idx_inclusive = hyph_idx + 1
         for sub in (word[:hyph_idx_inclusive], word[hyph_idx_inclusive:]):
             if sub:
-                self.word(sub)
+                self.word(node, sub)
 
     def _find_longest_hyph(self, word: str) -> int:
         hyph_idx = len(word)
@@ -316,18 +326,28 @@ class BlockLayout(object):
             word = word[:hyph_idx]
         return hyph_idx
 
-    def word(self, word: str):
+    def word(self, node: Node, word: str):
         if self._is_overflowing(word):
             self.flush()
 
         if self.is_abbr:
             word = word.upper()
 
+        weight = node.style["font-weight"]
+        font_style = node.style["font-style"]
+        if font_style == "normal":
+            font_style = "roman"
+        size = int(float(node.style["font-size"][:-2]) * 0.75)
+
         font = get_font(
-            self.family, self.size, self.is_bold or self.is_abbr, self.is_italic
+            self.family,
+            size,
+            weight.casefold() == WEIGHT_BOLD,
+            font_style == SLANT_ITALIC,
         )
         word_len = font.measure(word)
-        style = Styling(font)
+        color = node.style["color"]
+        style = Styling(font, color)
         if self.is_sup:
             style.valignment = "Top"
         self.line.append(LineUnit(self.cursor_x, word, style))
@@ -337,6 +357,7 @@ class BlockLayout(object):
             self.cursor_x += word_len
 
     def _is_overflowing(self, word: str) -> bool:
+        # FIXME with node stylings
         font = get_font(self.family, self.size, self.is_bold, self.is_italic)
         word_len = font.measure(word)
         return self.cursor_x + word_len > self.width
@@ -358,7 +379,13 @@ class BlockLayout(object):
             if lu.style.valignment == "Top":
                 y = self.y + baseline - max_ascent
             self.display_list.append(
-                DrawText(left=x, top=y, text=lu.word, font=lu.style.font)
+                DrawText(
+                    left=x,
+                    top=y,
+                    text=lu.word,
+                    font=lu.style.font,
+                    color=lu.style.color,
+                )
             )
         max_descent = max([metric["descent"] for metric in metrics])
         self.cursor_y = baseline + 1.25 * max_descent
@@ -369,7 +396,7 @@ class BlockLayout(object):
 FONTS = {}
 
 
-def get_font(family, size, is_bold, is_italic):
+def get_font(family, size: int, is_bold: bool, is_italic: bool):
     weight = WEIGHT_BOLD if is_bold else WEIGHT_NORMAL
     slant = SLANT_ITALIC if is_italic else SLANT_ROMAN
     key = (family, size, weight, slant)
