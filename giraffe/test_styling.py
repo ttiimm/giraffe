@@ -4,6 +4,7 @@ from giraffe.styling import (
     CSSParser,
     DescendantSelector,
     ParseError,
+    Rule,
     TagSelector,
     style,
 )
@@ -150,3 +151,26 @@ def test_parse():
     """
     rules = CSSParser(book_css).parse()
     assert len(rules) == 2
+
+
+def test_parse_nested_selector():
+    book_css = """
+       pre {
+        font-size: 18px;
+        overflow: auto;
+        padding-left: 2ex;
+        }
+        
+        @media print {
+            pre { font-size: 10px; }
+        }
+    """
+    rules = CSSParser(book_css).parse()
+    assert len(rules) == 1
+
+
+def test_parse_full_book_css():
+    with open("data/book.css") as f:
+        rules = CSSParser(f.read()).parse()
+        pre_only = [r for r in rules if isinstance(r.selector, TagSelector) and r.selector.tag == "pre"]
+        assert len(pre_only) == 1

@@ -36,7 +36,7 @@ class CSSParser:
         self.i = 0
         self.strict = strict
 
-    def parse(self):
+    def parse(self) -> List[Rule]:
         rules = []
         while self.i < len(self.s):
             try:
@@ -135,6 +135,17 @@ class TagSelector:
     def matches(self, node: Node):
         return isinstance(node, Element) and self.tag == node.tag
 
+    def __repr__(self) -> str:
+        return f"TagSelector({self.tag})"
+
+    def __eq__(self, other):
+        if isinstance(other, TagSelector):
+            return self.tag == other.tag
+        return False
+
+    def __hash__(self):
+        return hash(self.tag)
+
 
 class DescendantSelector:
     def __init__(
@@ -186,6 +197,13 @@ def style(node: Node, rules: "None | List[Rule]" = None):
         node_pct = float(node.style["font-size"][:-1]) / 100
         parent_px = float(parent_font_size[:-2])
         node.style["font-size"] = str(node_pct * parent_px) + "px"
+
+    if isinstance(node, Element):
+        name = node.tag
+    else:
+        name = node.text
+    print(f"{str(name)} -> {node.style}")
+    print("")
 
     for child in node.children:
         style(child, rules)
