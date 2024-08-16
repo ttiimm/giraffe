@@ -164,6 +164,21 @@ class BlockLayout(object):
         self.previous = previous
         self.children = []
 
+    def _is_pre(self) -> bool:
+        return isinstance(self.node, Element) and self.node.tag == "pre"
+
+    def _is_abbr(self, parent) -> bool:
+        return isinstance(parent, Element) and parent.tag == "abbr"
+
+    def _is_sup(self, parent) -> bool:
+        return isinstance(parent, Element) and parent.tag == "sup"
+
+    def _is_bold(self, parent) -> bool:
+        return isinstance(parent, Element) and parent.tag == "b"
+
+    def _is_italic(self, parent) -> bool:
+        return isinstance(parent, Element) and parent.tag == "i"
+
     def paint(self) -> List[Command]:
         cmds = []
         if isinstance(self.node, Element):
@@ -200,15 +215,6 @@ class BlockLayout(object):
         else:
             self.cursor_x = 0
             self.cursor_y = 0
-            # TODO remove the styling attributes
-            self.is_bold = False
-            self.is_italic = False
-            self.is_centering = False
-            self.is_sup = False
-            self.is_abbr = False
-            self.is_pre = False
-            self.family: str | None = None
-            self.size = 14
             self.recurse(self.node)
             self.flush()
 
@@ -236,7 +242,7 @@ class BlockLayout(object):
             return LayoutMode.BLOCK
 
     def recurse(self, node: Node):
-        if isinstance(node, Text) and self.is_pre:
+        if isinstance(node, Text) and self._is_pre():
             line = ""
             for c in node.text:
                 if c == "\n":
@@ -251,116 +257,90 @@ class BlockLayout(object):
             for word in node.text.split():
                 self._handle_text(node, word)
         else:
-            self.open_tag(node.tag)
+            # XXX: assumes everything in this branch is an Element
+            assert isinstance(node, Element)
+            if node.tag == "br":
+                self.flush()
+
             for child in node.children:
                 self.recurse(child)
-            self.close_tag(node.tag)
-
-    def open_tag(self, tag):
-        if tag == "i":
-            self.is_italic = True
-        elif tag == "b":
-            self.is_bold = True
-        elif tag == "small":
-            self.size -= 2
-        elif tag == "big":
-            self.size += 2
-        elif tag == "br":
-            self.flush()
-        elif tag == "h1":
-            self.flush()
-            self.is_centering = True
-        elif tag == "sup":
-            self.size = math.ceil(self.size / 2)
-            self.is_sup = True
-        elif tag == "abbr":
-            self.size -= 4
-            self.is_abbr = True
-        elif tag == "pre":
-            self.is_pre = True
-            self.family = "Courier New"
-
-    def close_tag(self, tag):
-        if tag == "i":
-            self.is_italic = False
-        elif tag == "b":
-            self.is_bold = False
-        elif tag == "small":
-            self.size += 2
-        elif tag == "big":
-            self.size -= 2
-        elif tag == "p":
-            self.flush()
-            self.cursor_y += VSTEP
-        elif tag == "h1":
-            self.flush()
-            self.is_centering = False
-        elif tag == "sup":
-            self.size = self.size * 2
-            self.is_sup = False
-        elif tag == "abbr":
-            self.size += 4
-            self.is_abbr = False
-        elif tag == "pre":
-            self.is_pre = False
-            self.family = None
 
     def _handle_text(self, node: Node, word: str):
-        if not self._is_overflowing(word) or SOFT_HYPHEN not in word:
+        if not self._is_overflowing(node, word) or SOFT_HYPHEN not in word:
             self.word(node, word)
             return
 
         # too long and contains a soft hyphen, try to split word on hyphen
-        hyph_idx = self._find_longest_hyph(word)
+        hyph_idx = self._find_longest_hyph(node, word)
         hyph_idx_inclusive = hyph_idx + 1
         for sub in (word[:hyph_idx_inclusive], word[hyph_idx_inclusive:]):
             if sub:
                 self.word(node, sub)
 
-    def _find_longest_hyph(self, word: str) -> int:
+    def _find_longest_hyph(self, node: Node, word: str) -> int:
         hyph_idx = len(word)
         while SOFT_HYPHEN in word:
-            if not self._is_overflowing(word):
+            if not self._is_overflowing(node, word):
                 break
             hyph_idx = word.rindex(SOFT_HYPHEN)
             word = word[:hyph_idx]
         return hyph_idx
 
     def word(self, node: Node, word: str):
-        if self._is_overflowing(word):
+        if self._is_overflowing(node, word):
             self.flush()
 
-        if self.is_abbr:
+        if self._is_abbr(node.parent):
             word = word.upper()
 
-        weight = node.style["font-weight"]
-        font_style = node.style["font-style"]
-        if font_style == "normal":
-            font_style = "roman"
-        size = int(float(node.style["font-size"][:-2]) * 0.75)
-
-        font = get_font(
-            self.family,
-            size,
-            weight.casefold() == WEIGHT_BOLD,
-            font_style == SLANT_ITALIC,
-        )
+        font = self._get_font(node)
         word_len = font.measure(word)
         color = node.style["color"]
         style = Styling(font, color)
-        if self.is_sup:
+        if self._is_sup(node.parent):
             style.valignment = "Top"
         self.line.append(LineUnit(self.cursor_x, word, style))
-        if not self.is_pre:
+        if not self._is_pre():
             self.cursor_x += word_len + font.measure(" ")
         else:
             self.cursor_x += word_len
 
-    def _is_overflowing(self, word: str) -> bool:
-        # FIXME with node stylings
-        font = get_font(self.family, self.size, self.is_bold, self.is_italic)
+    def _is_overflowing(self, node: Node, word: str) -> bool:
+        font = self._get_font(node)
         word_len = font.measure(word)
         return self.cursor_x + word_len > self.width
+
+    def _get_font(self, node: Node):
+        if self._is_pre():
+            family = "Courier New"
+        else:
+            family = node.style["font-family"]
+
+        if self._is_bold(node.parent) or self._is_abbr(node.parent):
+            weight = "bold"
+        else:
+            weight = node.style["font-weight"]
+
+        if self._is_italic(node.parent):
+            slant = "italic"
+        else:
+            slant = node.style["font-style"]
+
+        if slant == "normal":
+            slant = "roman"
+
+        size = int(float(node.style["font-size"][:-2]) * 0.75)
+        if self._is_sup(node.parent):
+            size = math.ceil(size / 2)
+
+        font = get_font(
+            family,
+            size,
+            weight.casefold() == WEIGHT_BOLD,
+            slant == SLANT_ITALIC,
+        )
+
+        return font
 
     def flush(self):
         if not self.line:
@@ -368,13 +348,9 @@ class BlockLayout(object):
         metrics = [lu.style.font.metrics() for lu in self.line]
         max_ascent = max([metric["ascent"] for metric in metrics])
         baseline = self.cursor_y + 1.25 * max_ascent
-        remaining = self.width - self.cursor_x
-        centering_offset = math.floor(remaining / 2.0)
 
         for lu in self.line:
             x = self.x + lu.cursor_x
-            if self.is_centering:
-                x = self.x + lu.cursor_x + centering_offset
             y = self.y + baseline - lu.style.font.metrics("ascent")
             if lu.style.valignment == "Top":
                 y = self.y + baseline - max_ascent
@@ -396,7 +372,7 @@ class BlockLayout(object):
 FONTS = {}
 
 
-def get_font(family, size: int, is_bold: bool, is_italic: bool):
+def get_font(family: str, size: int, is_bold: bool, is_italic: bool):
     weight = WEIGHT_BOLD if is_bold else WEIGHT_NORMAL
     slant = SLANT_ITALIC if is_italic else SLANT_ROMAN
     key = (family, size, weight, slant)

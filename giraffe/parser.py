@@ -47,8 +47,10 @@ HEAD_TAGS = (
 )
 
 
+# XXX: move this out of parser
 INHERITED_PROPERTIES = {
-    "font-size": "16px",
+    "font-family": "Arial",
+    "font-size": "24px",
     "font-style": "normal",
     "font-weight": "normal",
     "color": "black",

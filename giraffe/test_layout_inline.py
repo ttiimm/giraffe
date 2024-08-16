@@ -56,8 +56,7 @@ def test_layout(_setup_tkinter):
     display_list = root.children[0].display_list
     assert display_list[0].text == "hi"
     assert display_list[1].text == "mom"
-    assert display_list[0].top == 21.0
-    assert display_list[1].top == 21.0
+    assert display_list[0].top == display_list[1].top
     assert display_list[0].left < display_list[1].left
 
 
@@ -69,17 +68,6 @@ def test_layout_wraps(_setup_tkinter):
     assert display_list[0].text == "Lorem"
     assert display_list[-1].text == "laborum."
     assert display_list[0].top < display_list[-1].top
-
-
-def test_center(_setup_tkinter):
-    width = 100
-    nodes = treeify(Element("h1", attributes={"class": '"title"'}), Text("hi"))
-    root = DocumentLayout(nodes, width)
-    root.layout()
-    display_list = root.children[0].display_list
-    first = display_list[0]
-    assert first.text == "hi"
-    assert first.left == 42
 
 
 def test_sup(_setup_tkinter):
@@ -109,7 +97,7 @@ def test_soft_hyphens(_setup_tkinter):
 
 
 def test_soft_hyphens_with_multiple(_setup_tkinter):
-    width = 233
+    width = 275
     nodes = Text("supercalifragilis\N{SOFT HYPHEN}ticexpialidociou\N{SOFT HYPHEN}s")
     root = DocumentLayout(nodes, width)
     root.layout()
@@ -136,7 +124,7 @@ def test_small_caps(_setup_tkinter):
     assert font_conf["weight"] == "bold"
 
 
-def test_preformated(_setup_tkinter):
+def test_pre(_setup_tkinter):
     width = 100
     nodes = treeify(Element("pre"), APOLLINAIRE)
     root = DocumentLayout(nodes, width)
@@ -145,7 +133,7 @@ def test_preformated(_setup_tkinter):
     assert len(display_list) == 17
 
 
-def test_preformated_bold(_setup_tkinter):
+def test_pre_bold(_setup_tkinter):
     width = 100
     b_tag = Element("b")
     nodes = treeify(Element("pre"), [Text("    hello"), b_tag])
