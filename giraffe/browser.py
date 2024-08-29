@@ -12,8 +12,9 @@ from giraffe.styling import DEFAULT_STYLE_SHEET, CSSParser, style
 
 """An implementation of browser gui code for displaying web pages.
 
-This code is based on Chapter 2 of 
-[Web Browser Engineering](https://browser.engineering/graphics.html).
+This code is based on Chapter 2 and Chapter 7 of 
+[Web Browser Engineering - Graphics](https://browser.engineering/graphics.html)
+[Web Browser Engineering - Chrome](https://browser.engineering/chrome.html).
 """
 
 DO_EXPAND = 1
@@ -29,25 +30,53 @@ class FakeEvent:
     delta: int
 
 
-class Browser(object):
+class Browser:
     def __init__(self):
-        self.window = tkinter.Tk()
+        self.tabs: List["Tab"] = []
+        self.active_tab: "Tab | None" = None
         self.width = WIDTH
         self.height = HEIGHT
+        self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
             self.window, width=self.width, height=self.height, bg="white"
         )
         self.canvas.pack(fill=BOTH, expand=DO_EXPAND)
+        self.window.bind(sequence="<Down>", func=self.handle_down)
+        # self.window.bind(sequence="<Up>", func=self.scrollup)
+        # self.window.bind(sequence="<MouseWheel>", func=self.scrolldelta)
+        # self.window.bind(sequence="<Configure>", func=self.configure)
+        self.window.bind(sequence="<Button-1>", func=self.handle_click)
+
+    def new_tab(self, url):
+        new_tab = Tab(self.width, self.height)
+        new_tab.load(url)
+        self.active_tab = new_tab
+        self.tabs.append(new_tab)
+        self.draw()
+
+    def handle_down(self, _e):
+        self.active_tab.scrolldown()
+        self.draw()
+    
+    def handle_click(self, e):
+        self.active_tab.click(e.x, e.y)
+        self.draw()
+
+    def draw(self):
+        self.canvas.delete("all")
+        self.active_tab.draw(self.canvas)
+
+
+
+class Tab(object):
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height
         self.scroll = 0
         self.display_list: List[Command] = []
         self.nodes: Node = HtmlParser(ABOUT_BLANK).parse()
         self.location = URL("about:blank")
         self.rules = DEFAULT_STYLE_SHEET.copy()
-        self.window.bind(sequence="<Down>", func=self.scrolldown)
-        self.window.bind(sequence="<Up>", func=self.scrollup)
-        self.window.bind(sequence="<MouseWheel>", func=self.scrolldelta)
-        self.window.bind(sequence="<Configure>", func=self.configure)
-        self.window.bind(sequence="<Button-1>", func=self.click)
 
     def load(self, to_load: str | URL):
         if isinstance(to_load, str):
@@ -81,9 +110,6 @@ class Browser(object):
             self.rules.extend(CSSParser(body).parse())
         self.rules = sorted(self.rules, key=lambda r: r.cascade_priority())
         self._build_display_list()
-        # TODO add logging
-        # [print(du) for du in self.display_list]
-        self.draw()
 
     def _build_display_list(self):
         style(self.nodes, self.rules)
@@ -93,21 +119,20 @@ class Browser(object):
         self.display_list = []
         paint_tree(self.document, self.display_list)
 
-    def draw(self):
-        self.canvas.delete("all")
-        self._display_text()
-        self._display_scrollbar()
+    def draw(self, canvas):
+        self._display_text(canvas)
+        self._display_scrollbar(canvas)
 
-    def _display_text(self):
+    def _display_text(self, canvas):
         for cmd in self.display_list:
             if cmd.top > self.scroll + self.height:
                 continue
             if cmd.bottom < self.scroll:
                 continue
 
-            cmd.execute(self.scroll, self.canvas)
+            cmd.execute(self.scroll, canvas)
 
-    def _display_scrollbar(self):
+    def _display_scrollbar(self, canvas):
         if not self.display_list:
             return
 
@@ -121,15 +146,15 @@ class Browser(object):
             y1 = scroll_perc * self.height + SCROLLBAR_PAD
             x2 = self.width - SCROLLBAR_PAD
             y2 = scroll_perc * self.height + scrollbar_len - SCROLLBAR_PAD
-            self.canvas.create_rectangle(x1, y1, x2, y2, fill=SCROLLBAR_COLOR)
+            canvas.create_rectangle(x1, y1, x2, y2, fill=SCROLLBAR_COLOR)
+
 
     def configure(self, e):
         self.width = e.width
         self.height = e.height
         self._build_display_list()
-        self.draw()
 
-    def scrolldown(self, _e):
+    def scrolldown(self):
         self._handle_scroll(SCROLL_STEP)
 
     def scrollup(self, _e):
@@ -144,10 +169,8 @@ class Browser(object):
         maxline = lastline.bottom - self.height - VSTEP
         # clamp scroll such that scroll doesn't go beyond the body
         self.scroll = max(0, min(self.scroll + delta, maxline))
-        self.draw()
 
-    def click(self, e):
-        x, y = e.x, e.y
+    def click(self, x: int, y: int):
         y += self.scroll
         objs = [
             obj

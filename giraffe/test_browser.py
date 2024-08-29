@@ -4,7 +4,7 @@ from http.server import SimpleHTTPRequestHandler
 
 import pytest
 
-from giraffe.browser import Browser
+from giraffe.browser import Tab
 from giraffe.net import URL
 
 """Test cases for the browser's net code.
@@ -14,7 +14,7 @@ These test help verify the content and exercises for Chapter 2 of
 """
 
 # TODO: work on more tests for CH2
-# TODO: snapshot tests? 
+# TODO: snapshot tests?
 
 
 # TODO: record request for verification?
@@ -35,7 +35,7 @@ def _test_server():
 
 
 def test_with_malformed_url():
-    browser = Browser()
+    browser = Tab()
     browser.load("foo:bar:quux")
     assert browser.location == URL("about:blank")
     assert browser.display_list == []
@@ -43,7 +43,7 @@ def test_with_malformed_url():
 
 
 def test_load(_test_server):
-    browser = Browser()
+    browser = Tab()
     browser.load("http://0.0.0.0:8889/data/index.html")
     assert browser.location == URL("http://0.0.0.0:8889/data/index.html")
     assert browser.display_list
