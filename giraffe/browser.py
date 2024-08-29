@@ -7,7 +7,7 @@ from typing import List
 
 from giraffe.layout import VSTEP, Command, DocumentLayout, paint_tree
 from giraffe.net import ABOUT_BLANK, URL
-from giraffe.parser import Element, HtmlParser, Node
+from giraffe.parser import Element, HtmlParser, Node, Text
 from giraffe.styling import DEFAULT_STYLE_SHEET, CSSParser, style
 
 """An implementation of browser gui code for displaying web pages.
@@ -41,20 +41,24 @@ class Browser(object):
         self.scroll = 0
         self.display_list: List[Command] = []
         self.nodes: Node = HtmlParser(ABOUT_BLANK).parse()
-        self.location = ""
+        self.location = URL("about:blank")
         self.rules = DEFAULT_STYLE_SHEET.copy()
         self.window.bind(sequence="<Down>", func=self.scrolldown)
         self.window.bind(sequence="<Up>", func=self.scrollup)
         self.window.bind(sequence="<MouseWheel>", func=self.scrolldelta)
         self.window.bind(sequence="<Configure>", func=self.configure)
+        self.window.bind(sequence="<Button-1>", func=self.click)
 
-    def load(self, to_load: str):
-        try:
-            url = URL(to_load)
-        except Exception as e:
-            msg = getattr(e, "message", repr(e))
-            print(f"error: {msg}", file=sys.stderr)
-            url = URL("about:blank")
+    def load(self, to_load: str | URL):
+        if isinstance(to_load, str):
+            try:
+                url = URL(to_load)
+            except Exception as e:
+                msg = getattr(e, "message", repr(e))
+                print(f"error: {msg}", file=sys.stderr)
+                url = URL("about:blank")
+        else:
+            url = to_load
 
         body = url.request()
         self.location = url
@@ -141,6 +145,25 @@ class Browser(object):
         # clamp scroll such that scroll doesn't go beyond the body
         self.scroll = max(0, min(self.scroll + delta, maxline))
         self.draw()
+
+    def click(self, e):
+        x, y = e.x, e.y
+        y += self.scroll
+        objs = [
+            obj
+            for obj in tree_to_list(self.document, [])
+            if obj.x <= x < obj.x + obj.width and obj.y <= y < obj.y + obj.height
+        ]
+        if not objs:
+            return
+        element = objs[-1].node
+        while element:
+            if isinstance(element, Text):
+                pass
+            elif element.tag == "a" and "href" in element.attributes:
+                url = self.location.resolve(element.attributes["href"])
+                return self.load(url)
+            element = element.parent
 
 
 def tree_to_list(tree, list: List):
