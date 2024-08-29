@@ -5,7 +5,18 @@ import tkinter.font
 from tkinter import BOTH
 from typing import List
 
-from giraffe.layout import VSTEP, Command, DocumentLayout, paint_tree
+from giraffe.layout import (
+    VSTEP,
+    Command,
+    DocumentLayout,
+    DrawLine,
+    DrawOutline,
+    DrawRect,
+    DrawText,
+    Rect,
+    get_font,
+    paint_tree,
+)
 from giraffe.net import ABOUT_BLANK, URL
 from giraffe.parser import Element, HtmlParser, Node, Text
 from giraffe.styling import DEFAULT_STYLE_SHEET, CSSParser, style
@@ -42,13 +53,14 @@ class Browser:
         )
         self.canvas.pack(fill=BOTH, expand=DO_EXPAND)
         self.window.bind(sequence="<Down>", func=self.handle_down)
-        # self.window.bind(sequence="<Up>", func=self.scrollup)
-        # self.window.bind(sequence="<MouseWheel>", func=self.scrolldelta)
-        # self.window.bind(sequence="<Configure>", func=self.configure)
+        self.window.bind(sequence="<Up>", func=self.handle_up)
+        self.window.bind(sequence="<MouseWheel>", func=self.handle_wheel)
+        self.window.bind(sequence="<Configure>", func=self.handle_configure)
         self.window.bind(sequence="<Button-1>", func=self.handle_click)
+        self.chrome = Chrome(self)
 
     def new_tab(self, url):
-        new_tab = Tab(self.width, self.height)
+        new_tab = Tab(self.width, self.height + self.chrome.bottom, self.chrome.bottom)
         new_tab.load(url)
         self.active_tab = new_tab
         self.tabs.append(new_tab)
@@ -58,20 +70,112 @@ class Browser:
         self.active_tab.scrolldown()
         self.draw()
     
+    def handle_up(self, _e):
+        self.active_tab.scrollup()
+        self.draw()
+    
+    def handle_wheel(self, e):
+        self.active_tab.scrolldelta(e)
+        self.draw()
+
     def handle_click(self, e):
         self.active_tab.click(e.x, e.y)
+        self.draw()
+
+    def handle_configure(self, e):
+        self.width = e.width
+        self.height = e.height
+        self.active_tab.configure(self.width, self.height + self.chrome.bottom)
         self.draw()
 
     def draw(self):
         self.canvas.delete("all")
         self.active_tab.draw(self.canvas)
+        for cmd in self.chrome.paint(self.width):
+            cmd.execute(0, self.canvas)
 
 
+class Chrome:
+    def __init__(self, browser):
+        self.browser = browser
+        self.font = get_font("Iosevka", 20, False, False)
+        self.font_height = self.font.metrics("linespace")
+        self.padding = 5
+        self.tabbar_top = 0
+        self.tabbar_bottom = self.font_height + 2 * self.padding
 
-class Tab(object):
-    def __init__(self, width: int, height: int):
+        plus_width = self.font.measure("+") + 2 * self.padding
+        self.newtab_rect = Rect(
+            self.padding,
+            self.padding,
+            self.padding + plus_width,
+            self.padding + self.font_height,
+        )
+        self.bottom = self.tabbar_bottom
+
+    def tab_rect(self, i):
+        tabs_start = self.newtab_rect.right + self.padding
+        tabs_width = self.font.measure("Tab X") + 2 * self.padding
+        return Rect(
+            tabs_start + tabs_width * i,
+            self.tabbar_top,
+            tabs_start + tabs_width * (i + 1),
+            self.tabbar_bottom,
+        )
+
+    def paint(self, width: int):
+        cmds = []
+        cmds.append(
+            DrawRect(left=0, top=0, right=width, bottom=self.bottom, color="white")
+        )
+        cmds.append(DrawLine(0, self.bottom, width, self.bottom, "black", 1))
+        cmds.append(DrawOutline(self.newtab_rect, "black", 1))
+        cmds.append(
+            DrawText(
+                text="+",
+                font=self.font,
+                color="black",
+                left=self.newtab_rect.left + self.padding,
+                top=self.newtab_rect.top,
+            )
+        )
+
+        for i, tab in enumerate(self.browser.tabs):
+            bounds = self.tab_rect(i)
+            cmds.append(
+                DrawLine(bounds.left, 0, bounds.left, bounds.bottom, "black", 1)
+            )
+            cmds.append(
+                DrawLine(bounds.right, 0, bounds.right, bounds.bottom, "black", 1)
+            )
+            cmds.append(
+                DrawText(
+                    text=f"Tab {i}",
+                    font=self.font,
+                    color="black",
+                    left=bounds.left + self.padding,
+                    top=bounds.top + self.padding,
+                )
+            )
+
+            if tab == self.browser.active_tab:
+                cmds.append(
+                    DrawLine(0, bounds.bottom, bounds.left, bounds.bottom, "black", 1)
+                )
+                cmds.append(
+                    DrawLine(
+                        bounds.right, bounds.bottom, WIDTH, bounds.bottom, "black", 1
+                    )
+                )
+
+        return cmds
+
+
+class Tab:
+    def __init__(self, width: int, height: int, tab_height: int):
         self.width = width
         self.height = height
+        self.tab_height = tab_height
         self.scroll = 0
         self.display_list: List[Command] = []
         self.nodes: Node = HtmlParser(ABOUT_BLANK).parse()
@@ -136,28 +240,27 @@ class Tab(object):
         if not self.display_list:
             return
 
-        first_y = self.display_list[0].top
-        last_y = self.display_list[-1].bottom
+        first_y = self.document.y
+        last_y = self.document.height
         if first_y < self.scroll or last_y > self.scroll + self.height:
             total_screens = math.ceil(last_y / self.height)
             scrollbar_len = self.height / total_screens
             scroll_perc = self.scroll / last_y
             x1 = self.width - SCROLLBAR_WIDTH
-            y1 = scroll_perc * self.height + SCROLLBAR_PAD
+            y1 = scroll_perc * self.height + self.tab_height + 2 * SCROLLBAR_PAD
             x2 = self.width - SCROLLBAR_PAD
-            y2 = scroll_perc * self.height + scrollbar_len - SCROLLBAR_PAD
+            y2 = scroll_perc * self.height + self.tab_height + scrollbar_len - 2 * SCROLLBAR_PAD
             canvas.create_rectangle(x1, y1, x2, y2, fill=SCROLLBAR_COLOR)
 
-
-    def configure(self, e):
-        self.width = e.width
-        self.height = e.height
+    def configure(self, width, height):
+        self.width = width
+        self.height = height
         self._build_display_list()
 
     def scrolldown(self):
         self._handle_scroll(SCROLL_STEP)
 
-    def scrollup(self, _e):
+    def scrollup(self):
         self._handle_scroll(-SCROLL_STEP)
 
     def scrolldelta(self, e):
@@ -165,10 +268,10 @@ class Tab(object):
         self._handle_scroll(delta)
 
     def _handle_scroll(self, delta):
-        lastline = self.display_list[-1]
-        maxline = lastline.bottom - self.height - VSTEP
         # clamp scroll such that scroll doesn't go beyond the body
-        self.scroll = max(0, min(self.scroll + delta, maxline))
+        max_y = max(self.document.height + 2 * VSTEP - self.height, 0)
+        min_y = min(self.scroll + delta, max_y)
+        self.scroll = max(-VSTEP, min_y)
 
     def click(self, x: int, y: int):
         y += self.scroll

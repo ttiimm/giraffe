@@ -22,6 +22,14 @@ SLANT_ITALIC = "italic"
 
 
 @dataclass
+class Rect:
+    left: int
+    top: int
+    right: int
+    bottom: int
+
+
+@dataclass
 class Styling:
     font: tkinter.font.Font
     color: str = "black"
@@ -43,6 +51,40 @@ class Command:
 
     def execute(self, _scroll, _canvas):
         pass
+
+
+class DrawOutline:
+    def __init__(self, rect, color, thickness):
+        self.rect = rect
+        self.color = color
+        self.thickness = thickness
+
+    def execute(self, scroll, canvas):
+        canvas.create_rectangle(
+            self.rect.left,
+            self.rect.top - scroll,
+            self.rect.right,
+            self.rect.bottom - scroll,
+            width=self.thickness,
+            outline=self.color,
+        )
+
+
+class DrawLine:
+    def __init__(self, x1, y1, x2, y2, color, thickness):
+        self.rect = Rect(x1, y1, x2, y2)
+        self.color = color
+        self.thickness = thickness
+
+    def execute(self, scroll, canvas):
+        canvas.create_line(
+            self.rect.left,
+            self.rect.top - scroll,
+            self.rect.right,
+            self.rect.bottom - scroll,
+            fill=self.color,
+            width=self.thickness,
+        )
 
 
 @dataclass
@@ -90,7 +132,7 @@ class DocumentLayout:
         self.x = HSTEP
         self.y = VSTEP
         self.width = width - 2 * HSTEP
-        self.height = None
+        self.height = 0
 
     def layout(self):
         child = BlockLayout(self.node, self, None)
