@@ -202,8 +202,8 @@ def style(node: Node, rules: "None | List[Rule]" = None):
         name = node.tag
     else:
         name = node.text
-    print(f"{str(name)} -> {node.style}")
-    print("")
+    # print(f"{str(name)} -> {node.style}")
+    # print("")
 
     for child in node.children:
         style(child, rules)
