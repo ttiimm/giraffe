@@ -7,6 +7,7 @@ from typing import List
 
 from giraffe.layout import (
     VSTEP,
+    HSTEP,
     Command,
     DocumentLayout,
     DrawLine,
@@ -60,7 +61,11 @@ class Browser:
         self.chrome = Chrome(self)
 
     def new_tab(self, url):
-        new_tab = Tab(self.width, self.height + self.chrome.bottom, self.chrome.bottom)
+        new_tab = Tab(
+            self.width,
+            self.height - self.chrome.bottom,
+            self.chrome.bottom,
+        )
         new_tab.load(url)
         self.active_tab = new_tab
         self.tabs.append(new_tab)
@@ -69,11 +74,11 @@ class Browser:
     def handle_down(self, _e):
         self.active_tab.scrolldown()
         self.draw()
-    
+
     def handle_up(self, _e):
         self.active_tab.scrollup()
         self.draw()
-    
+
     def handle_wheel(self, e):
         self.active_tab.scrolldelta(e)
         self.draw()
@@ -176,7 +181,8 @@ class Tab:
         self.width = width
         self.height = height
         self.tab_height = tab_height
-        self.scroll = 0
+        # XXX: this is a hack to get the tab to display correctly on load...
+        self.scroll = -tab_height
         self.display_list: List[Command] = []
         self.nodes: Node = HtmlParser(ABOUT_BLANK).parse()
         self.location = URL("about:blank")
@@ -249,7 +255,12 @@ class Tab:
             x1 = self.width - SCROLLBAR_WIDTH
             y1 = scroll_perc * self.height + self.tab_height + 2 * SCROLLBAR_PAD
             x2 = self.width - SCROLLBAR_PAD
-            y2 = scroll_perc * self.height + self.tab_height + scrollbar_len - 2 * SCROLLBAR_PAD
+            y2 = (
+                scroll_perc * self.height
+                + self.tab_height
+                + scrollbar_len
+                - 2 * SCROLLBAR_PAD
+            )
             canvas.create_rectangle(x1, y1, x2, y2, fill=SCROLLBAR_COLOR)
 
     def configure(self, width, height):
