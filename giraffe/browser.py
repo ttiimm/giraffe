@@ -378,7 +378,7 @@ class Tab:
 
     def _handle_scroll(self, delta):
         # clamp scroll such that scroll doesn't go beyond the body
-        max_y = max(self.document.height + 2 * VSTEP - self.height, 0)
+        max_y = max(self.document.height + 2 * VSTEP + self.tab_height - self.height, 0)
         min_y = min(self.scroll + delta, max_y)
         self.scroll = max(-self.tab_height, min_y)
 
