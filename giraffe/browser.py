@@ -223,7 +223,7 @@ class Tab:
 
     def _build_display_list(self):
         style(self.nodes, self.rules)
-        self.document = DocumentLayout(self.nodes, self.width)
+        self.document = DocumentLayout(self.nodes, self.width - SCROLLBAR_WIDTH - 2 * SCROLLBAR_PAD)
         self.document.layout()
         # display_list is standard browser/gui (?) terminology
         self.display_list = []
@@ -252,7 +252,7 @@ class Tab:
             total_screens = math.ceil(last_y / self.height)
             scrollbar_len = self.height / total_screens
             scroll_perc = self.scroll / last_y
-            x1 = self.width - SCROLLBAR_WIDTH
+            x1 = self.width - SCROLLBAR_WIDTH - SCROLLBAR_PAD
             y1 = scroll_perc * self.height + self.tab_height + 2 * SCROLLBAR_PAD
             x2 = self.width - SCROLLBAR_PAD
             y2 = (

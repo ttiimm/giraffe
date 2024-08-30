@@ -406,13 +406,12 @@ class BlockLayout(object):
         return hyph_idx
 
     def word(self, node: Node, word: str):
+        if self._is_overflowing(node, word):
+            self.new_line()
         line = self.children[-1]
         previous_word = line.children[-1] if line.children else None
         text = TextLayout(node, word, line, previous_word)
         line.children.append(text)
-
-        if self._is_overflowing(node, word):
-            self.new_line()
 
         if self._is_abbr(node.parent):
             word = word.upper()
