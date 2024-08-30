@@ -28,6 +28,9 @@ class Rect:
     right: int
     bottom: int
 
+    def contains_point(self, x, y):
+        return x >= self.left and x < self.right and y >= self.top and y < self.bottom
+
 
 @dataclass
 class Styling:

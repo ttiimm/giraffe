@@ -84,7 +84,10 @@ class Browser:
         self.draw()
 
     def handle_click(self, e):
-        self.active_tab.click(e.x, e.y)
+        if e.y < self.chrome.bottom:
+            self.chrome.click(e.x, e.y)
+        else:
+            self.active_tab.click(e.x, e.y)
         self.draw()
 
     def handle_configure(self, e):
@@ -174,6 +177,15 @@ class Chrome:
                 )
 
         return cmds
+    
+    def click(self, x, y):
+        if self.newtab_rect.contains_point(x, y):
+            self.browser.new_tab(URL("https://browser.engineering/"))
+        else:
+            for i, tab in enumerate(self.browser.tabs):
+                if self.tab_rect(i).contains_point(x, y):
+                    self.browser.active_tab = tab
+                    break
 
 
 class Tab:
