@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Self, TypeVar
-
+from typing import Dict, List
 
 """The lexing and parsing code used by the browser.
 

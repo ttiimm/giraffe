@@ -1,7 +1,7 @@
-from enum import Enum
 import math
 import tkinter.font
 from dataclasses import dataclass
+from enum import Enum
 from typing import List, Literal
 
 from giraffe.parser import SOFT_HYPHEN, Element, Node, Text

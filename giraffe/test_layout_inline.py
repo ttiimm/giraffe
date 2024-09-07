@@ -4,9 +4,7 @@ from typing import List
 import pytest
 
 from giraffe.layout import DocumentLayout, TextLayout
-from giraffe.parser import Node, Element, Text
-from giraffe.styling import INHERITED_PROPERTIES
-
+from giraffe.parser import Element, Node, Text
 
 """Test cases for the browser's layout engine.
 

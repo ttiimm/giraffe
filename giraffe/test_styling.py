@@ -1,10 +1,10 @@
 import pytest
+
 from giraffe.parser import Element, Text
 from giraffe.styling import (
     CSSParser,
     DescendantSelector,
     ParseError,
-    Rule,
     TagSelector,
     style,
 )

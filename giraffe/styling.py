@@ -1,12 +1,13 @@
+from dataclasses import dataclass
+from typing import List
+
+from giraffe.parser import INHERITED_PROPERTIES, Element, Node
+
 """A parser for CSS used in web pages.
 
 This code is based on Chapter 6 of
 [Web Browser Engineering](https://browser.engineering/styles.html).
 """
-
-from dataclasses import dataclass
-from typing import List
-from giraffe.parser import INHERITED_PROPERTIES, Element, Node
 
 
 class ParseError(Exception):

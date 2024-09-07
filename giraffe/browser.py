@@ -7,7 +7,6 @@ from typing import List
 
 from giraffe.layout import (
     VSTEP,
-    HSTEP,
     Command,
     DocumentLayout,
     DrawLine,
@@ -97,15 +96,15 @@ class Browser:
         self.height = e.height
         self.active_tab.configure(self.width, self.height + self.chrome.bottom)
         self.draw()
-    
+
     def handle_key(self, e):
-        if len(e.char) == 0: 
+        if len(e.char) == 0:
             return
-        if not (0x20 <= ord(e.char) < 0x7f):
+        if not (0x20 <= ord(e.char) < 0x7F):
             return
         self.chrome.keypress(e.char)
         self.draw()
-    
+
     def handle_enter(self, e):
         self.chrome.enter()
         self.draw()
@@ -259,11 +258,11 @@ class Chrome:
                 if self.tab_rect(i).contains_point(x, y):
                     self.browser.active_tab = tab
                     break
-    
+
     def keypress(self, char):
         if self.focus == "address bar":
             self.address_bar += char
-    
+
     def enter(self):
         if self.focus == "address bar":
             self.browser.active_tab.load(self.address_bar)
