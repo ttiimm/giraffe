@@ -4,7 +4,7 @@ from http.server import SimpleHTTPRequestHandler
 
 import pytest
 
-from giraffe.browser import Tab
+from giraffe.browser import Browser
 from giraffe.net import URL
 
 """Test cases for the browser's net code.
@@ -35,16 +35,18 @@ def _test_server():
 
 
 def test_with_malformed_url():
-    browser = Tab()
-    browser.load("foo:bar:quux")
-    assert browser.location == URL("about:blank")
-    assert browser.display_list == []
-    assert str(browser.nodes) == "<html><head></head><body></body></html>"
+    browser = Browser()
+    browser.new_tab("foo:bar:quux")
+    assert browser.active_tab
+    assert browser.active_tab.location == URL("about:blank")
+    assert browser.active_tab.display_list == []
+    assert str(browser.active_tab.nodes) == "<html><head></head><body></body></html>"
 
 
 def test_load(_test_server):
-    browser = Tab()
-    browser.load("http://0.0.0.0:8889/data/index.html")
-    assert browser.location == URL("http://0.0.0.0:8889/data/index.html")
-    assert browser.display_list
-    assert browser.nodes
+    browser = Browser()
+    browser.new_tab("http://0.0.0.0:8889/data/index.html")
+    assert browser.active_tab
+    assert browser.active_tab.location == URL("http://0.0.0.0:8889/data/index.html")
+    assert browser.active_tab.display_list
+    assert str(browser.active_tab.nodes) == "<html><body>hi</body></html>"

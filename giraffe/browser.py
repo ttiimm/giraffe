@@ -44,7 +44,7 @@ class FakeEvent:
 class Browser:
     def __init__(self):
         self.tabs: List["Tab"] = []
-        self.active_tab: "Tab | None" = None
+        self._active_tab: "Tab | None" = None
         self.width = WIDTH
         self.height = HEIGHT
         self.window = tkinter.Tk()
@@ -60,6 +60,16 @@ class Browser:
         self.window.bind(sequence="<Key>", func=self.handle_key)
         self.window.bind(sequence="<Return>", func=self.handle_enter)
         self.chrome = Chrome(self)
+
+    @property
+    def active_tab(self) -> "Tab":
+        if self._active_tab is None:
+            raise AttributeError("No active tab")
+        return self._active_tab
+
+    @active_tab.setter
+    def active_tab(self, tab: "Tab"):
+        self._active_tab = tab
 
     def new_tab(self, url):
         new_tab = Tab(
