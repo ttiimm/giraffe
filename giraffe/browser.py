@@ -17,7 +17,7 @@ from giraffe.layout import (
     get_font,
     paint_tree,
 )
-from giraffe.net import ABOUT_BLANK, URL
+from giraffe.net import ABOUT_BLANK_HTML, URL
 from giraffe.parser import Element, HtmlParser, Node, Text
 from giraffe.styling import DEFAULT_STYLE_SHEET, CSSParser, style
 
@@ -127,7 +127,7 @@ class Browser:
 
 
 class Chrome:
-    def __init__(self, browser):
+    def __init__(self, browser: Browser):
         self.browser = browser
         self.font = get_font("Iosevka", 20, False, False)
         self.font_height = self.font.metrics("linespace")
@@ -161,7 +161,7 @@ class Chrome:
         self.focus = None
         self.address_bar = ""
 
-    def tab_rect(self, i):
+    def tab_rect(self, i: int):
         tabs_start = self.newtab_rect.right + self.padding
         tabs_width = self.font.measure("Tab X") + 2 * self.padding
         return Rect(
@@ -280,14 +280,14 @@ class Chrome:
 
 
 class Tab:
-    def __init__(self, width: int, height: int, tab_height: int):
+    def __init__(self, width: int, height: int, chrome_height: int):
         self.width = width
         self.height = height
-        self.tab_height = tab_height
+        self.chrome_height = chrome_height
         # XXX: this is a hack to get the tab to display correctly on load...
-        self.scroll = -tab_height
+        self.scroll = -chrome_height
         self.display_list: List[Command] = []
-        self.nodes: Node = HtmlParser(ABOUT_BLANK).parse()
+        self.nodes = HtmlParser(ABOUT_BLANK_HTML).parse()
         self.location = URL("about:blank")
         self.rules = DEFAULT_STYLE_SHEET.copy()
         self.history: List[URL] = []
@@ -315,7 +315,6 @@ class Tab:
             and node.attributes.get("rel") == "stylesheet"
             and "href" in node.attributes
         ]
-        self.rules = DEFAULT_STYLE_SHEET.copy()
         for link in links:
             style_url = url.resolve(link)
             try:
@@ -360,11 +359,11 @@ class Tab:
             scrollbar_len = self.height / total_screens
             scroll_perc = self.scroll / last_y
             x1 = self.width - SCROLLBAR_WIDTH - SCROLLBAR_PAD
-            y1 = scroll_perc * self.height + self.tab_height + 2 * SCROLLBAR_PAD
+            y1 = scroll_perc * self.height + self.chrome_height + 2 * SCROLLBAR_PAD
             x2 = self.width - SCROLLBAR_PAD
             y2 = (
                 scroll_perc * self.height
-                + self.tab_height
+                + self.chrome_height
                 + scrollbar_len
                 - 2 * SCROLLBAR_PAD
             )
@@ -387,9 +386,11 @@ class Tab:
 
     def _handle_scroll(self, delta):
         # clamp scroll such that scroll doesn't go beyond the body
-        max_y = max(self.document.height + 2 * VSTEP + self.tab_height - self.height, 0)
+        max_y = max(
+            self.document.height + 2 * VSTEP + self.chrome_height - self.height, 0
+        )
         min_y = min(self.scroll + delta, max_y)
-        self.scroll = max(-self.tab_height, min_y)
+        self.scroll = max(-self.chrome_height, min_y)
 
     def click(self, x: int, y: int):
         y += self.scroll

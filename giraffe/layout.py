@@ -107,6 +107,7 @@ class DrawText(Command):
             font=self.font,
             anchor="nw",
             fill=self.color,
+            tags="gText"
         )
 
 
