@@ -249,3 +249,28 @@ def test_url_resolve_with_relative():
     assert css_url.host == "browser.engineering"
     assert css_url.port == 80
     assert css_url.path == "/book.css"
+
+
+def test_url_str_http():
+    url = URL("http://browser.engineering/foo/http.html")
+    assert str(url) == "http://browser.engineering/foo/http.html"
+
+
+def test_url_str_https():
+    url = URL("https://browser.engineering/foo/http.html")
+    assert str(url) == "https://browser.engineering/foo/http.html"
+
+
+def test_url_str_http_default_port():
+    url = URL("http://browser.engineering:80/foo/http.html")
+    assert str(url) == "http://browser.engineering/foo/http.html"
+
+
+def test_url_str_https_default_port():
+    url = URL("https://browser.engineering:443/foo/http.html")
+    assert str(url) == "https://browser.engineering/foo/http.html"
+
+
+def test_url_str_data():
+    url = URL("data:text/html,Hello world!")
+    assert str(url) == "data:text/html,Hello world!"

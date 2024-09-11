@@ -219,12 +219,15 @@ class URL(object):
             )
 
     def __str__(self):
-        port_part = ":" + str(self.port)
-        if self.scheme == Scheme.HTTPS and self.port == 443:
-            port_part = ""
-        if self.scheme == Scheme.HTTP and self.port == 80:
-            port_part = ""
-        return f"{self.scheme.name.lower()}://{self.host}{port_part}{self.path}"
+        if self.scheme == Scheme.DATA:
+            return f"{self.scheme.name.lower()}:{self.path.lstrip('/')}"
+        else:
+            port_part = ":" + str(self.port)
+            if self.scheme == Scheme.HTTPS and self.port == 443:
+                port_part = ""
+            if self.scheme == Scheme.HTTP and self.port == 80:
+                port_part = ""
+            return f"{self.scheme.name.lower()}://{self.host}{port_part}{self.path}"
 
 
 # XXX Move this into browser?
