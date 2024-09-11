@@ -13,7 +13,7 @@ This code is based on Chapter 1 of
 [Web Browser Engineering](https://browser.engineering/http.html).
 """
 
-ABOUT_BLANK = "<html><head></head><body></body></html>"
+ABOUT_BLANK_HTML = "<html><head></head><body></body></html>"
 
 
 @dataclass
@@ -23,7 +23,7 @@ class Response:
     explanation: str = ""
     # XXX: can this be a [str, List[str]]
     headers: Mapping[str, str] = field(default_factory=dict)
-    body: str = ABOUT_BLANK
+    body: str = ABOUT_BLANK_HTML
 
 
 Scheme = Enum("Scheme", ["HTTP", "HTTPS", "FILE", "DATA", "ABOUT"])
