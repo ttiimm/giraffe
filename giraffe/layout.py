@@ -15,6 +15,8 @@ This code is based on Chapter 3/5/7 of
 
 HSTEP, VSTEP = 13, 18
 
+TAG_TEXT = "gText"
+
 WEIGHT_NORMAL = "normal"
 WEIGHT_BOLD = "bold"
 SLANT_ROMAN = "roman"
@@ -107,7 +109,7 @@ class DrawText(Command):
             font=self.font,
             anchor="nw",
             fill=self.color,
-            tags="gText"
+            tags=TAG_TEXT
         )
 
 

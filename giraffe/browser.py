@@ -18,7 +18,7 @@ from giraffe.layout import (
     paint_tree,
 )
 from giraffe.net import ABOUT_BLANK_HTML, URL
-from giraffe.parser import Element, HtmlParser, Node, Text
+from giraffe.parser import Element, HtmlParser, Text
 from giraffe.styling import DEFAULT_STYLE_SHEET, CSSParser, style
 
 """An implementation of browser gui code for displaying web pages.
@@ -35,6 +35,7 @@ SCROLL_MULTIPLIER = -20
 SCROLLBAR_WIDTH = 12
 SCROLLBAR_PAD = 4
 SCROLLBAR_COLOR = "cornflower blue"
+TAG_SCROLLBAR = "gBar"
 
 
 class FakeEvent:
@@ -367,7 +368,7 @@ class Tab:
                 + scrollbar_len
                 - 2 * SCROLLBAR_PAD
             )
-            canvas.create_rectangle(x1, y1, x2, y2, fill=SCROLLBAR_COLOR)
+            canvas.create_rectangle(x1, y1, x2, y2, fill=SCROLLBAR_COLOR, tags=TAG_SCROLLBAR)
 
     def configure(self, width, height):
         self.width = width

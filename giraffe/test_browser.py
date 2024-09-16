@@ -1,11 +1,12 @@
 import socketserver
 import threading
-from http.server import SimpleHTTPRequestHandler
 import tkinter
+from http.server import SimpleHTTPRequestHandler
 
 import pytest
 
-from giraffe.browser import Browser, Tab
+from giraffe.browser import TAG_SCROLLBAR, Browser, Tab
+from giraffe.layout import TAG_TEXT
 from giraffe.net import URL
 
 """Test cases for the browser's net code.
@@ -13,6 +14,11 @@ from giraffe.net import URL
 These test help verify the content and exercises for Chapter 2 of
 [Web Browser Engineering](https://browser.engineering/graphics.html).
 """
+
+TEST_WIDTH = 50
+TEST_HEIGHT = 50
+TEST_CHROME_HEIGHT = 2
+TK_TEXT = "text"
 
 # TODO: work on more tests for CH2
 # TODO: snapshot tests?
@@ -68,17 +74,28 @@ def test_multi_tabs():
 
 
 def test_tab_draw_no_scroll(tk_window):
-    width = 50
-    height = 50
-    chrome_height = 2
-    canvas = tkinter.Canvas(tk_window, width=width, height=height)
-    tab = Tab(width, height, chrome_height)
+    canvas = tkinter.Canvas(tk_window, width=TEST_WIDTH, height=TEST_HEIGHT)
+    tab = Tab(TEST_WIDTH, TEST_HEIGHT, TEST_CHROME_HEIGHT)
     tab.load("data:text/html,<p>hi</p>")
     tab.draw(canvas)
-    text_objs = canvas.find_withtag("gText")
+    text_objs = canvas.find_withtag(TAG_TEXT)
     assert len(text_objs) == 1
     text_id = text_objs[0]
-    content = canvas.itemcget(text_id, "text")
+    content = canvas.itemcget(text_id, TK_TEXT)
     assert content == "hi"
-    scroll_bar_objs = canvas.find_withtag("gBar")
+    scroll_bar_objs = canvas.find_withtag(TAG_SCROLLBAR)
     assert len(scroll_bar_objs) == 0
+
+
+def test_tab_draw_scrollbar(tk_window):
+    canvas = tkinter.Canvas(tk_window, width=TEST_WIDTH, height=TEST_HEIGHT)
+    tab = Tab(TEST_WIDTH, TEST_HEIGHT, TEST_CHROME_HEIGHT)
+    tab.load("data:text/html,<p>hi</p><p>hi</p>")
+    tab.draw(canvas)
+    text_objs = canvas.find_withtag(TAG_TEXT)
+    assert len(text_objs) == 1
+    text_id = text_objs[0]
+    content = canvas.itemcget(text_id, TK_TEXT)
+    assert content == "hi"
+    scroll_bar_objs = canvas.find_withtag(TAG_SCROLLBAR)
+    assert len(scroll_bar_objs) == 1
